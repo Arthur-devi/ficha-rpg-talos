@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&family=Cinzel:wght@400;500;600;700&family=IM+Fell+English:ital@0;1&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Philosopher:ital,wght@0,400;0,700;1,400&family=Crimson+Pro:ital,wght@0,400;0,600;1,400;1,600&display=swap');
 
 :root {
   --parch-100: #fdf6e3;
@@ -21,9 +21,9 @@
   --shadow: rgba(58, 42, 5, 0.25);
   --shadow-deep: rgba(26, 16, 6, 0.45);
 
-  --font-title: 'Cinzel Decorative', serif;
-  --font-heading: 'Cinzel', serif;
-  --font-body: 'IM Fell English', serif;
+  --font-title: 'Philosopher', serif;
+  --font-heading: 'Philosopher', serif;
+  --font-body: 'Crimson Pro', serif;
 
   --radius-sm: 4px;
   --radius-md: 8px;

@@ -137,8 +137,13 @@ export default function TabAtributos({ char, update, updateAttr, derived, toggle
               const isMagia = attr.key === 'magia';
               // Magia: valor exibido = base + bonus de INT; minimo editavel = magiaFromInt
               const displayValue = isMagia ? derived.magiaTotal : char.attrs[attr.key];
-              const modKey = `mod${attr.abbr.charAt(0)}${attr.abbr.slice(1).toLowerCase()}`;
-              const mod = derived[modKey] ?? Math.floor(char.attrs[attr.key] / 2);
+              // Mapa explícito de abbr -> chave do derived (evita bug de geração dinâmica)
+              const modMap = {
+                FOR: 'modForca', MAG: 'modMagia', CON: 'modCon',
+                INT: 'modInt', PER: 'modPer', DES: 'modDes',
+                CAR: 'modCar', DEF: 'modDef', SOR: 'modSor',
+              };
+              const mod = derived[modMap[attr.abbr]] ?? Math.floor(char.attrs[attr.key] / 2);
               return (
                 <AttrBox
                   key={attr.key}

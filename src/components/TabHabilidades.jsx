@@ -1,4 +1,42 @@
 import { SHIKATAS, SHIKATAS_HABILIDADES, getHabilidadesPorNivel, getHabilidadesFuturas } from '../data/system';
+import { getEvolucao } from '../data/evolucoes';
+
+function EvolucaoTable({ shikataId, nome, nivelAtual }) {
+  const rows = getEvolucao(shikataId, nome);
+  if (!rows || rows.length === 0) return null;
+  return (
+    <div style={{ marginTop: 8, borderRadius: 4, overflow: 'hidden', border: '1px solid var(--parch-300)' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' }}>
+        <thead>
+          <tr style={{ background: 'var(--parch-200)' }}>
+            <th style={{ fontFamily: 'var(--font-heading)', fontSize: '0.62rem', letterSpacing: '0.07em', textTransform: 'uppercase', padding: '4px 8px', textAlign: 'left', color: 'var(--ink-light)', width: 64, borderBottom: '1px solid var(--parch-300)' }}>Nível</th>
+            <th style={{ fontFamily: 'var(--font-heading)', fontSize: '0.62rem', letterSpacing: '0.07em', textTransform: 'uppercase', padding: '4px 8px', textAlign: 'left', color: 'var(--ink-light)', borderBottom: '1px solid var(--parch-300)' }}>Efeito</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => {
+            const unlocked = r.nivel <= nivelAtual;
+            const isCurrent = rows.filter(x => x.nivel <= nivelAtual).length > 0 &&
+              r.nivel === Math.max(...rows.filter(x => x.nivel <= nivelAtual).map(x => x.nivel));
+            return (
+              <tr key={i} style={{
+                background: isCurrent ? 'rgba(212,160,23,0.08)' : unlocked ? 'rgba(253,246,227,0.4)' : 'transparent',
+                opacity: unlocked ? 1 : 0.45,
+                borderBottom: i < rows.length - 1 ? '1px solid var(--parch-200)' : 'none',
+              }}>
+                <td style={{ padding: '4px 8px', fontFamily: 'var(--font-heading)', fontWeight: 600, color: isCurrent ? 'var(--gold-dark)' : unlocked ? 'var(--ink-dark)' : 'var(--ink-faded)', whiteSpace: 'nowrap' }}>
+                  {isCurrent && <span style={{ marginRight: 4 }}>▶</span>}
+                  Nv. {r.nivel}
+                </td>
+                <td style={{ padding: '4px 8px', color: unlocked ? 'var(--ink-mid)' : 'var(--ink-faded)', lineHeight: 1.4 }}>{r.desc}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
 export default function TabHabilidades({ char }) {
   const shikataData = SHIKATAS.find(s => s.id === char.shikata);
@@ -60,7 +98,7 @@ export default function TabHabilidades({ char }) {
         </div>
       </div>
 
-      {/* Unlocked abilities */}
+      {/* Unlocked abilities - grouped by level */}
       <div className="card">
         <div className="card-header">
           <span>✦</span>
@@ -70,23 +108,50 @@ export default function TabHabilidades({ char }) {
           {unlockedSkills.length === 0 ? (
             <p style={{ color: 'var(--ink-faded)', fontSize: '0.85rem', fontStyle: 'italic' }}>Nenhuma habilidade desbloqueada ainda.</p>
           ) : (
-            unlockedSkills.map((h, idx) => (
-              <div key={idx} className="habilidade-row unlocked">
-                <div style={{display:'flex',gap:6,alignItems:'center',marginBottom:4,flexWrap:'wrap'}}>
-                  <div className="habilidade-nivel">Nível {h.nivel}</div>
-                  {h.tipo && <span style={{fontSize:'0.6rem',fontFamily:'var(--font-heading)',textTransform:'uppercase',letterSpacing:'0.06em',padding:'1px 6px',borderRadius:3,background:h.tipo==='passiva'?'#e8f5e9':h.tipo==='reacao'?'#fce4ec':h.tipo==='bonus'?'#e3f2fd':'#f3e5f5',color:h.tipo==='passiva'?'#2e7d32':h.tipo==='reacao'?'#c62828':h.tipo==='bonus'?'#1565c0':'#6a1b9a'}}>{h.tipo}</span>}
-                  {h.usos && <span style={{fontSize:'0.65rem',fontFamily:'var(--font-heading)',color:'var(--ink-faded)'}}>{h.usos}</span>}
-                  {h.subclasse && <span style={{fontSize:'0.6rem',fontFamily:'var(--font-heading)',color:'var(--gold-dark)',background:'rgba(212,160,23,0.08)',padding:'1px 6px',borderRadius:3,border:'1px solid var(--gold-dark)'}}>{h.subclasse}</span>}
+            (() => {
+              // Agrupa por nível
+              const byLevel = {};
+              unlockedSkills.forEach(h => {
+                if (!byLevel[h.nivel]) byLevel[h.nivel] = [];
+                byLevel[h.nivel].push(h);
+              });
+              return Object.keys(byLevel).sort((a,b) => Number(a)-Number(b)).map(lvl => (
+                <div key={lvl} style={{ marginBottom: 16 }}>
+                  {/* Separador de nível */}
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8,
+                  }}>
+                    <div style={{
+                      fontFamily: 'var(--font-heading)', fontSize: '0.72rem', fontWeight: 600,
+                      color: 'var(--parch-100)', background: Number(lvl) === nivel ? 'var(--gold-dark)' : 'var(--ink-dark)',
+                      padding: '3px 10px', borderRadius: 4, letterSpacing: '0.08em',
+                      whiteSpace: 'nowrap', flexShrink: 0,
+                    }}>
+                      Nível {lvl}
+                      {Number(lvl) === nivel && <span style={{ marginLeft: 6, fontSize: '0.6rem', opacity: 0.85 }}>← atual</span>}
+                    </div>
+                    <div style={{ flex: 1, height: 1, background: 'var(--parch-300)' }} />
+                  </div>
+                  {byLevel[lvl].map((h, idx) => (
+                    <div key={idx} className="habilidade-row unlocked" style={{ marginLeft: 8 }}>
+                      <div style={{display:'flex',gap:6,alignItems:'center',marginBottom:4,flexWrap:'wrap'}}>
+                        {h.tipo && <span style={{fontSize:'0.6rem',fontFamily:'var(--font-heading)',textTransform:'uppercase',letterSpacing:'0.06em',padding:'1px 6px',borderRadius:3,background:h.tipo==='passiva'?'#e8f5e9':h.tipo==='reacao'?'#fce4ec':h.tipo==='bonus'?'#e3f2fd':'#f3e5f5',color:h.tipo==='passiva'?'#2e7d32':h.tipo==='reacao'?'#c62828':h.tipo==='bonus'?'#1565c0':'#6a1b9a'}}>{h.tipo}</span>}
+                        {h.usos && <span style={{fontSize:'0.65rem',fontFamily:'var(--font-heading)',color:'var(--ink-faded)'}}>{h.usos}</span>}
+                        {h.subclasse && <span style={{fontSize:'0.6rem',fontFamily:'var(--font-heading)',color:'var(--gold-dark)',background:'rgba(212,160,23,0.08)',padding:'1px 6px',borderRadius:3,border:'1px solid var(--gold-dark)'}}>{h.subclasse}</span>}
+                      </div>
+                      <div className="habilidade-nome">{h.nome}</div>
+                      <div className="habilidade-desc">{h.desc}</div>
+                      <EvolucaoTable shikataId={char.shikata} nome={h.nome} nivelAtual={nivel} />
+                    </div>
+                  ))}
                 </div>
-                <div className="habilidade-nome">{h.nome}</div>
-                <div className="habilidade-desc">{h.desc}</div>
-              </div>
-            ))
+              ));
+            })()
           )}
         </div>
       </div>
 
-      {/* Locked abilities */}
+      {/* Locked abilities - grouped by level */}
       {lockedSkills.length > 0 && (
         <div className="card">
           <div className="card-header">
@@ -94,17 +159,39 @@ export default function TabHabilidades({ char }) {
             <h3>Habilidades Futuras</h3>
           </div>
           <div className="card-body">
-            {lockedSkills.map((h, idx) => (
-              <div key={idx} className="habilidade-row locked">
-                <div style={{display:'flex',gap:6,alignItems:'center',marginBottom:4,flexWrap:'wrap'}}>
-                  <div className="habilidade-nivel">Nível {h.nivel}</div>
-                  {h.tipo && <span style={{fontSize:'0.6rem',fontFamily:'var(--font-heading)',textTransform:'uppercase',letterSpacing:'0.06em',padding:'1px 6px',borderRadius:3,background:'var(--parch-200)',color:'var(--ink-faded)'}}>{h.tipo}</span>}
-                  {h.subclasse && <span style={{fontSize:'0.6rem',fontFamily:'var(--font-heading)',color:'var(--ink-faded)',padding:'1px 6px',borderRadius:3,border:'1px solid var(--parch-400)'}}>{h.subclasse}</span>}
+            {(() => {
+              const byLevel = {};
+              lockedSkills.forEach(h => {
+                if (!byLevel[h.nivel]) byLevel[h.nivel] = [];
+                byLevel[h.nivel].push(h);
+              });
+              return Object.keys(byLevel).sort((a,b) => Number(a)-Number(b)).map(lvl => (
+                <div key={lvl} style={{ marginBottom: 16 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                    <div style={{
+                      fontFamily: 'var(--font-heading)', fontSize: '0.72rem', fontWeight: 600,
+                      color: 'var(--ink-faded)', background: 'var(--parch-200)',
+                      padding: '3px 10px', borderRadius: 4, letterSpacing: '0.08em',
+                      border: '1px solid var(--parch-400)', whiteSpace: 'nowrap', flexShrink: 0,
+                    }}>
+                      Nível {lvl}
+                    </div>
+                    <div style={{ flex: 1, height: 1, background: 'var(--parch-300)' }} />
+                  </div>
+                  {byLevel[lvl].map((h, idx) => (
+                    <div key={idx} className="habilidade-row locked" style={{ marginLeft: 8 }}>
+                      <div style={{display:'flex',gap:6,alignItems:'center',marginBottom:4,flexWrap:'wrap'}}>
+                        {h.tipo && <span style={{fontSize:'0.6rem',fontFamily:'var(--font-heading)',textTransform:'uppercase',letterSpacing:'0.06em',padding:'1px 6px',borderRadius:3,background:'var(--parch-200)',color:'var(--ink-faded)'}}>{h.tipo}</span>}
+                        {h.subclasse && <span style={{fontSize:'0.6rem',fontFamily:'var(--font-heading)',color:'var(--ink-faded)',padding:'1px 6px',borderRadius:3,border:'1px solid var(--parch-400)'}}>{h.subclasse}</span>}
+                      </div>
+                      <div className="habilidade-nome">{h.nome}</div>
+                      <div className="habilidade-desc">{h.desc}</div>
+                      <EvolucaoTable shikataId={char.shikata} nome={h.nome} nivelAtual={nivel} />
+                    </div>
+                  ))}
                 </div>
-                <div className="habilidade-nome">{h.nome}</div>
-                <div className="habilidade-desc">{h.desc}</div>
-              </div>
-            ))}
+              ));
+            })()}
           </div>
         </div>
       )}
@@ -115,7 +202,8 @@ export default function TabHabilidades({ char }) {
         <div className="card-body">
           <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
             {Array.from({ length: Math.max(20, nivel) }, (_, i) => i + 1).map(n => {
-              const hasSkill = shikataData.habilidades.some(h => h.nivel === n);
+              const allSkills = SHIKATAS_HABILIDADES[char.shikata] || [];
+              const hasSkill = allSkills.some(h => h.nivel === n);
               const isSubclass = n === shikataData.subclasseNivel;
               return (
                 <div key={n} style={{
