@@ -2,6 +2,8 @@ import { useState, useMemo } from 'react';
 import itemsRaw from '../data/items_raw.json';
 import { ITEM_SLOTS, RARIDADE_CONFIG } from '../data/system';
 
+const RARIDADE_ORDER = ['Lixo', 'Comum', 'Raro', 'Épico', 'Lendário', 'Pacto', 'Divino', 'Conjunto'];
+
 function RarityBadge({ rarity }) {
   const cfg = RARIDADE_CONFIG[rarity] || RARIDADE_CONFIG['Comum'];
   return (
@@ -15,7 +17,8 @@ function RarityBadge({ rarity }) {
 }
 
 function ItemDetail({ item, onAdd, inInventory }) {
-  const cfg = RARIDADE_CONFIG[item.rarity] || {};
+  const hasStats = item.stats && item.stats !== '—';
+  const statIcon = item.category === 'Conjunto' ? '🔗' : item.category === 'Armadura' || item.category === 'Escudo' ? '🛡️' : '📋';
   return (
     <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--parch-300)', display: 'flex', gap: 12, alignItems: 'flex-start' }}>
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -24,9 +27,13 @@ function ItemDetail({ item, onAdd, inInventory }) {
           <RarityBadge rarity={item.rarity} />
           <span style={{ fontSize: '0.72rem', color: 'var(--ink-faded)', fontFamily: 'var(--font-heading)' }}>{item.category}</span>
         </div>
-        {item.damage && <div style={{ fontSize: '0.78rem', color: 'var(--red-old)', marginBottom: 2 }}>⚔️ {item.damage}</div>}
+        {hasStats ? (
+          <div style={{ fontSize: '0.78rem', color: item.category === 'Arma' ? 'var(--red-old)' : 'var(--ink-light)', marginBottom: 2, whiteSpace: 'pre-line' }}>
+            {statIcon} {item.stats}
+          </div>
+        ) : item.damage && <div style={{ fontSize: '0.78rem', color: 'var(--red-old)', marginBottom: 2 }}>⚔️ {item.damage}</div>}
         {item.cost && item.cost !== '-' && <div style={{ fontSize: '0.78rem', color: 'var(--gold-dark)', marginBottom: 4 }}>💰 {item.cost}</div>}
-        <div style={{ fontSize: '0.78rem', color: 'var(--ink-mid)', fontStyle: 'italic', lineHeight: 1.45 }}>{item.desc}</div>
+        <div style={{ fontSize: '0.78rem', color: 'var(--ink-mid)', fontStyle: 'italic', lineHeight: 1.45, whiteSpace: 'pre-line' }}>{item.desc}</div>
       </div>
       <button className="btn btn-secondary btn-sm" style={{ flexShrink: 0 }} onClick={() => onAdd(item)}>
         {inInventory ? '+ Mais' : '+ Add'}
@@ -35,7 +42,7 @@ function ItemDetail({ item, onAdd, inInventory }) {
   );
 }
 
-function SlotGrid({ char, items, onEquip, onUnequip }) {
+function SlotGrid({ char, items, onUnequip }) {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 8 }}>
       {ITEM_SLOTS.map(slot => {
@@ -69,7 +76,6 @@ export default function TabInventario({ char, addInventoryItem, removeInventoryI
   const [search, setSearch] = useState('');
   const [filterCat, setFilterCat] = useState('');
   const [filterRar, setFilterRar] = useState('');
-  const [catalogOpen, setCatalogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('equipped'); // 'equipped' | 'bag' | 'catalog'
 
   const inventoryItems = useMemo(() =>
@@ -79,7 +85,14 @@ export default function TabInventario({ char, addInventoryItem, removeInventoryI
 
   const filteredCatalog = useMemo(() => {
     let list = itemsRaw;
-    if (search) list = list.filter(i => i.name.toLowerCase().includes(search.toLowerCase()) || i.desc.toLowerCase().includes(search.toLowerCase()));
+    if (search) {
+      const q = search.toLowerCase();
+      list = list.filter(i =>
+        i.name.toLowerCase().includes(q) ||
+        (i.desc || '').toLowerCase().includes(q) ||
+        (i.stats || '').toLowerCase().includes(q)
+      );
+    }
     if (filterCat) list = list.filter(i => i.category === filterCat);
     if (filterRar) list = list.filter(i => i.rarity === filterRar);
     return list;
@@ -87,17 +100,13 @@ export default function TabInventario({ char, addInventoryItem, removeInventoryI
 
   const inInventorySet = useMemo(() => new Set(char.inventario.map(i => i.itemId)), [char.inventario]);
 
-  const categories = ['Arma', 'Escudo', 'Armadura', 'Equipamento', 'Consumível'];
-  const raridades = ['Lixo', 'Comum', 'Raro', 'Épico', 'Lendário', 'Pacto', 'Divino'];
+  const categories = useMemo(() => [...new Set(itemsRaw.map(i => i.category))], []);
+  const raridades = useMemo(() => {
+    const present = new Set(itemsRaw.map(i => i.rarity));
+    return RARIDADE_ORDER.filter(r => present.has(r));
+  }, []);
 
-  const handleEquipFromBag = (invItem) => {
-    // Find first matching slot
-    const slotMap = { Arma: 'arma_principal', Escudo: 'arma_secundaria', Armadura: 'armadura', Consumível: null };
-    const autoSlot = slotMap[invItem.item?.category] || null;
-    if (autoSlot) equipItem(invItem.itemId, autoSlot);
-  };
-
-  const handleUnequip = (itemId, slot) => {
+  const handleUnequip = (itemId) => {
     equipItem(itemId, null);
   };
 
@@ -122,7 +131,7 @@ export default function TabInventario({ char, addInventoryItem, removeInventoryI
         <div className="card">
           <div className="card-header"><span>🛡️</span><h3>Itens Equipados</h3></div>
           <div className="card-body">
-            <SlotGrid char={char} items={itemsRaw} onEquip={equipItem} onUnequip={handleUnequip} />
+            <SlotGrid char={char} items={itemsRaw} onUnequip={handleUnequip} />
             <p style={{ marginTop: 12, fontSize: '0.75rem', color: 'var(--ink-faded)', fontStyle: 'italic' }}>
               Para equipar um item, vá para <strong>Mochila</strong> e clique em "Equipar" no item desejado.
             </p>
@@ -160,7 +169,10 @@ export default function TabInventario({ char, addInventoryItem, removeInventoryI
                           {isEquipped && <span style={{ fontSize: '0.65rem', fontFamily: 'var(--font-heading)', color: 'var(--gold-dark)', background: 'rgba(212,160,23,0.1)', padding: '1px 6px', borderRadius: 3, border: '1px solid var(--gold-dark)' }}>EQUIPADO</span>}
                         </div>
                         {item.damage && <div style={{ fontSize: '0.75rem', color: 'var(--red-old)' }}>⚔️ {item.damage}</div>}
-                        <div style={{ fontSize: '0.75rem', color: 'var(--ink-faded)', fontStyle: 'italic', lineHeight: 1.4, marginTop: 2 }}>{item.desc.substring(0, 120)}{item.desc.length > 120 ? '…' : ''}</div>
+                        {item.stats && item.stats !== '—' && (
+                          <div style={{ fontSize: '0.72rem', color: 'var(--ink-light)', lineHeight: 1.35, marginTop: 2 }}>{item.stats.substring(0, 120)}{item.stats.length > 120 ? '…' : ''}</div>
+                        )}
+                        <div style={{ fontSize: '0.75rem', color: 'var(--ink-faded)', fontStyle: 'italic', lineHeight: 1.4, marginTop: 2 }}>{(item.desc || '').substring(0, 120)}{(item.desc || '').length > 120 ? '…' : ''}</div>
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end', flexShrink: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>

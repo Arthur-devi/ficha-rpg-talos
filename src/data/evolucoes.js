@@ -339,14 +339,34 @@ export const EVOLUCOES = {
   },
 
   feiticeiro: {
+    'Raio Místico': [
+      { nivel: 1, desc: 'Alcance 6m - 1d12 + magia' },
+      { nivel: 3, desc: 'Alcance 7m - 1d12 + magia - arremessa 5m; pode realizar conjuração dupla' },
+      { nivel: 5, desc: 'Alcance 8m - 2d12 + magia' },
+      { nivel: 7, desc: 'Alcance 9m - 2d12 + magia - cura metade do dano causado' },
+      { nivel: 9, desc: 'Alcance 12m - 3d12 + magia' },
+      { nivel: 11, desc: 'Alcance 14m - 4d12 + magia - reduz armadura do alvo em 1 cumulativamente' },
+      { nivel: 13, desc: 'Alcance 16m - 5d12 + magia' },
+      { nivel: 15, desc: 'Alcance 16m - 5d12 + magia - teste de resistência mágica dif. 5+magia ou atordoa no arremesso' },
+      { nivel: 17, desc: 'Alcance 30m - 6d12 + magia - atinge inimigos até 2m do impacto com o mesmo dano' },
+    ],
+    'Névoa Gelada': [
+      { nivel: 1, desc: '1d4 + magia - 1 turno - congela uma parte pequena' },
+      { nivel: 7, desc: '2d10 + magia - 2 turnos - congela uma parte inteira' },
+      { nivel: 12, desc: '3d10 + magia - 3 turnos - congela o corpo inteiro' },
+    ],
+    'Repreensão Pactual': [
+      { nivel: 2, desc: '2x descanso longo - 2d10 + magia' },
+      { nivel: 6, desc: '3x descanso longo - 4d10 + magia' },
+    ],
     'Teleporte': [
-      { nivel: 3, desc: '5 mana — ação bônus — até 6m' },
-      { nivel: 9, desc: '10 mana — pode ser reação — até 12m' },
+      { nivel: 3, desc: '3 mana - ação bônus - até 6m' },
+      { nivel: 9, desc: '5 mana - pode ser reação - até 12m' },
     ],
     '[Temporal] Retroceder': [
-      { nivel: 5, desc: '15 mana — 1 aliado ou inimigo' },
-      { nivel: 8, desc: '20 mana — pode retroceder a si mesmo' },
-      { nivel: 14, desc: '25 mana — 2 alvos (incluindo si)' },
+      { nivel: 5, desc: '1 alvo aliado ou inimigo' },
+      { nivel: 8, desc: 'Pode retroceder a si mesmo' },
+      { nivel: 14, desc: '2 alvos, incluindo si; pode retroceder a morte, exceto a própria' },
     ],
   },
 
@@ -685,25 +705,6 @@ export const EVOLUCOES = {
     ],
     '[Guerra] Legião de Sangue': [
       { nivel: 14, desc: '1x desc. longo — 30 HP — +1 CA e +1 def por litro de sangue (máx 8 CA). >10L: +2 dados' },
-    ],
-  },
-
-  'devastador-pactual': {
-    'Raio Místico': [
-      { nivel: 1, desc: '1d12 + mod car — alcance 15m — 1 alvo' },
-      { nivel: 5, desc: '3d12 + mod car — alcance 30m' },
-      { nivel: 9, desc: '5d12 + mod car — alcance 50m — área 2×2m' },
-      { nivel: 17, desc: '7d12 + mod car — alcance 80m — aprimorado' },
-      { nivel: 20, desc: '9d12 + mod car — alcance 100m — área 3×3m — cadeia de réplica' },
-    ],
-    'Repreensão Pactual (Passiva)': [
-      { nivel: 1, desc: 'Retaliação automática: 2d10' },
-      { nivel: 9, desc: 'Retaliação automática: 4d10' },
-    ],
-    'Golpe de Sangue': [
-      { nivel: 2, desc: '3d6' },
-      { nivel: 9, desc: '5d6' },
-      { nivel: 14, desc: '8d6' },
     ],
   },
 

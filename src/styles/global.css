@@ -1,4 +1,10 @@
-@import url('https://fonts.googleapis.com/css2?family=Philosopher:ital,wght@0,400;0,700;1,400&family=Crimson+Pro:ital,wght@0,400;0,600;1,400;1,600&display=swap');
+@font-face {
+  font-family: 'Talos Playfair Display';
+  src: url('./fonts/Montserrat-VariableFont_wght.ttf') format('truetype');
+  font-weight: 300 900;
+  font-style: normal;
+  font-display: swap;
+}
 
 :root {
   --parch-100: #fdf6e3;
@@ -21,9 +27,13 @@
   --shadow: rgba(58, 42, 5, 0.25);
   --shadow-deep: rgba(26, 16, 6, 0.45);
 
-  --font-title: 'Philosopher', serif;
-  --font-heading: 'Philosopher', serif;
-  --font-body: 'Crimson Pro', serif;
+  --font-title: 'Talos Playfair Display', serif;
+  --font-heading: 'Talos Playfair Display', serif;
+  --font-body: 'Talos Playfair Display', serif;
+  --font-weight-thin: 300;
+  --font-weight-body: 500;
+  --font-weight-heading: 650;
+  --font-weight-title: 750;
 
   --radius-sm: 4px;
   --radius-md: 8px;
@@ -38,6 +48,7 @@ html { font-size: 16px; scroll-behavior: smooth; }
 
 body {
   font-family: var(--font-body);
+  font-weight: var(--font-weight-body);
   background: var(--parch-300);
   color: var(--ink-dark);
   min-height: 100vh;
@@ -47,8 +58,8 @@ body {
 }
 
 /* Typography */
-h1, h2, h3, h4 { font-family: var(--font-heading); color: var(--ink-dark); line-height: 1.2; }
-h1 { font-family: var(--font-title); font-size: 1.6rem; }
+h1, h2, h3, h4 { font-family: var(--font-heading); font-weight: var(--font-weight-heading); color: var(--ink-dark); line-height: 1.2; }
+h1 { font-family: var(--font-title); font-weight: var(--font-weight-title); font-size: 1.6rem; }
 h2 { font-size: 1.1rem; letter-spacing: 0.08em; text-transform: uppercase; }
 h3 { font-size: 0.9rem; letter-spacing: 0.06em; text-transform: uppercase; }
 
@@ -56,6 +67,7 @@ label { font-family: var(--font-heading); font-size: 0.72rem; letter-spacing: 0.
 
 input, textarea, select {
   font-family: var(--font-body);
+  font-weight: var(--font-weight-body);
   font-size: 0.95rem;
   color: var(--ink-dark);
   background: rgba(253, 246, 227, 0.8);
@@ -465,6 +477,125 @@ select { cursor: pointer; }
   color: var(--ink-mid);
   line-height: 1.45;
   font-style: italic;
+}
+
+/* Sistema reference */
+.reference-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.reference-summary span {
+  font-family: var(--font-heading);
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-light);
+  border: 1px solid var(--parch-300);
+  background: rgba(253,246,227,0.55);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+}
+.reference-toolbar {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.reference-tabs,
+.reference-shikata-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.reference-search {
+  width: min(100%, 320px);
+}
+.reference-shikata-picker {
+  max-height: 120px;
+  overflow-y: auto;
+  border: 1px solid var(--parch-300);
+  border-radius: var(--radius-md);
+  padding: 8px;
+  background: rgba(253,246,227,0.45);
+  margin-bottom: 12px;
+}
+.reference-list {
+  max-height: 68vh;
+  overflow-y: auto;
+  border: 1px solid var(--parch-300);
+  border-radius: var(--radius-md);
+  background: rgba(253,246,227,0.45);
+  padding: 10px 12px;
+}
+.reference-line {
+  color: var(--ink-mid);
+  font-size: 0.86rem;
+  line-height: 1.55;
+  padding: 3px 0;
+  white-space: pre-wrap;
+}
+.reference-line-title {
+  font-family: var(--font-heading);
+  color: var(--ink-dark);
+  font-size: 0.9rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-top: 10px;
+  border-top: 1px solid var(--parch-300);
+  padding-top: 10px;
+}
+.reference-line:first-child.reference-line-title {
+  margin-top: 0;
+  border-top: 0;
+  padding-top: 0;
+}
+.reference-line-subtitle,
+.reference-line-ability {
+  font-family: var(--font-heading);
+  color: var(--gold-dark);
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+  margin-top: 8px;
+}
+.reference-line-key {
+  font-family: var(--font-heading);
+  color: var(--ink-light);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.reference-empty {
+  color: var(--ink-faded);
+  font-style: italic;
+  padding: 18px;
+  text-align: center;
+}
+.reference-set {
+  border-bottom: 1px solid var(--parch-300);
+  padding: 10px 0;
+}
+.reference-set:last-child { border-bottom: 0; }
+.reference-set-title {
+  font-family: var(--font-heading);
+  color: var(--ink-dark);
+  font-size: 0.92rem;
+  margin-bottom: 4px;
+}
+.reference-set-parts {
+  color: var(--ink-light);
+  font-size: 0.78rem;
+  margin-bottom: 4px;
+}
+.reference-set-desc {
+  color: var(--ink-mid);
+  font-size: 0.82rem;
+  font-style: italic;
+  line-height: 1.45;
+  white-space: pre-line;
 }
 
 /* Modal overlay */

@@ -72,14 +72,18 @@ export function useCharacter() {
     try {
       const saved = localStorage.getItem('talos_char_draft');
       if (saved) return { ...defaultCharacter, ...JSON.parse(saved) };
-    } catch {}
+    } catch {
+      // localStorage can be unavailable in restricted browser contexts.
+    }
     return defaultCharacter;
   });
 
   const update = useCallback((path, value) => {
     setChar(prev => {
       const next = deepSet({ ...prev }, path, value);
-      try { localStorage.setItem('talos_char_draft', JSON.stringify(next)); } catch {}
+      try { localStorage.setItem('talos_char_draft', JSON.stringify(next)); } catch {
+        // Keep in-memory edits even when persistence is blocked.
+      }
       return next;
     });
   }, []);
@@ -87,7 +91,9 @@ export function useCharacter() {
   const updateAttr = useCallback((attr, value) => {
     setChar(prev => {
       const next = { ...prev, attrs: { ...prev.attrs, [attr]: Number(value) || 0 } };
-      try { localStorage.setItem('talos_char_draft', JSON.stringify(next)); } catch {}
+      try { localStorage.setItem('talos_char_draft', JSON.stringify(next)); } catch {
+        // Keep in-memory edits even when persistence is blocked.
+      }
       return next;
     });
   }, []);
@@ -127,7 +133,9 @@ export function useCharacter() {
         newInv = [...prev.inventario, { itemId: item.id, qty: 1, equipped: false, slot: null, notes: '' }];
       }
       const next = { ...prev, inventario: newInv };
-      try { localStorage.setItem('talos_char_draft', JSON.stringify(next)); } catch {}
+      try { localStorage.setItem('talos_char_draft', JSON.stringify(next)); } catch {
+        // Keep in-memory edits even when persistence is blocked.
+      }
       return next;
     });
   }, []);
@@ -135,7 +143,9 @@ export function useCharacter() {
   const removeInventoryItem = useCallback((itemId) => {
     setChar(prev => {
       const next = { ...prev, inventario: prev.inventario.filter(i => i.itemId !== itemId) };
-      try { localStorage.setItem('talos_char_draft', JSON.stringify(next)); } catch {}
+      try { localStorage.setItem('talos_char_draft', JSON.stringify(next)); } catch {
+        // Keep in-memory edits even when persistence is blocked.
+      }
       return next;
     });
   }, []);
@@ -150,7 +160,9 @@ export function useCharacter() {
         i.itemId === itemId ? { ...i, equipped: !!slot, slot } : i
       );
       const next = { ...prev, equippedSlots: newSlots, inventario: newInv };
-      try { localStorage.setItem('talos_char_draft', JSON.stringify(next)); } catch {}
+      try { localStorage.setItem('talos_char_draft', JSON.stringify(next)); } catch {
+        // Keep in-memory edits even when persistence is blocked.
+      }
       return next;
     });
   }, []);
@@ -159,7 +171,9 @@ export function useCharacter() {
     setChar(prev => {
       const has = prev.estados.includes(estadoId);
       const next = { ...prev, estados: has ? prev.estados.filter(e => e !== estadoId) : [...prev.estados, estadoId] };
-      try { localStorage.setItem('talos_char_draft', JSON.stringify(next)); } catch {}
+      try { localStorage.setItem('talos_char_draft', JSON.stringify(next)); } catch {
+        // Keep in-memory edits even when persistence is blocked.
+      }
       return next;
     });
   }, []);
@@ -168,7 +182,9 @@ export function useCharacter() {
     setChar(prev => {
       const has = prev.pericias.includes(pericia);
       const next = { ...prev, pericias: has ? prev.pericias.filter(p => p !== pericia) : [...prev.pericias, pericia] };
-      try { localStorage.setItem('talos_char_draft', JSON.stringify(next)); } catch {}
+      try { localStorage.setItem('talos_char_draft', JSON.stringify(next)); } catch {
+        // Keep in-memory edits even when persistence is blocked.
+      }
       return next;
     });
   }, []);

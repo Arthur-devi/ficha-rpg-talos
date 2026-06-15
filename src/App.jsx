@@ -7,6 +7,8 @@ import TabHabilidades from './components/TabHabilidades';
 import TabInventario from './components/TabInventario';
 import TabMagias from './components/TabMagias';
 import TabNotas from './components/TabNotas';
+import TabSistema from './components/TabSistema';
+import { ORIGENS, SHIKATAS } from './data/system';
 
 const TABS = [
   { id: 'identidade', label: 'Identidade', icon: '📜' },
@@ -14,6 +16,7 @@ const TABS = [
   { id: 'habilidades', label: 'Habilidades', icon: '⚔️' },
   { id: 'inventario', label: 'Inventário', icon: '🎒' },
   { id: 'magias', label: 'Magias', icon: '✨' },
+  { id: 'sistema', label: 'Sistema', icon: '📚' },
   { id: 'notas', label: 'Notas', icon: '📝' },
 ];
 
@@ -80,6 +83,7 @@ export default function App() {
         {activeTab === 'habilidades' && <TabHabilidades char={char} update={update} />}
         {activeTab === 'inventario' && <TabInventario char={char} addInventoryItem={addInventoryItem} removeInventoryItem={removeInventoryItem} equipItem={equipItem} />}
         {activeTab === 'magias' && <TabMagias char={char} update={update} derived={derived} />}
+        {activeTab === 'sistema' && <TabSistema />}
         {activeTab === 'notas' && <TabNotas char={char} update={update} />}
       </main>
 
@@ -111,10 +115,8 @@ export default function App() {
 
 // Helpers to get display names
 function ORIGIN_NAME(id) {
-  const map = { humano: 'Humano', drac: 'Drac', manchados: 'Manchados', anao: 'Anão', 'anao-rocha': 'Anão da Rocha', crono: 'Crono', elfo: 'Elfo', 'elfo-floresta': 'Elfo da Floresta', 'elfo-rubro': 'Elfo Rubro', 'elfo-maritimo': 'Elfo Marítimo', 'elfo-negro': 'Elfo Negro', orc: 'Orc', 'meio-orc': 'Meio Orc', gnomo: 'Gnomo', hobbit: 'Hobbit', nordico: 'Nórdico', 'meio-dragao': 'Meio Dragão', 'meio-demonio': 'Meio Demônio', cursed: 'Cursed', kvaldir: 'Kvaldir', feral: 'Feral', goblin: 'Goblin', thungan: 'Thungan', tita: 'Titã', guardiao: 'Guardião', fada: 'Fada', elemental: 'Elemental', slime: 'Slime', undead: 'Undead', 'troll-montanha': 'Troll da Montanha', 'troll-floresta': 'Troll da Floresta', gigante: 'Gigante', celestial: 'Celestial', velkro: 'Velkro', metamorfo: 'Metamorfo', vampiro: 'Vampiro', lobisomem: 'Lobisomem', lorv: 'Lorv' };
-  return map[id] || id;
+  return ORIGENS.find(origem => origem.id === id)?.name || id;
 }
 function SHIKATA_NAME(id) {
-  const map = { guerreiro: 'Guerreiro', ladino: 'Ladino', inclemente: 'Inclemente', cacador: 'Caçador', vanguarda: 'Vanguarda', monge: 'Monge', necromante: 'Necromante', mago: 'Mago', feiticeiro: 'Feiticeiro', bardo: 'Bardo', paladino: 'Paladino', espadachim: 'Espadachim', ceifeiro: 'Ceifeiro', bruxo: 'Bruxo', fulgor: 'Fulgor', sentinela: 'Sentinela', spellstealer: 'Spellstealer', hemomante: 'Hemomante', 'devastador-pactual': 'Devastador Pactual', lanceiro: 'Lanceiro', 'manipulador-essencia': 'Manipulador de Essência', 'invocador-funereo': 'Invocador Funéreo' };
-  return map[id] || id;
+  return SHIKATAS.find(shikata => shikata.id === id)?.name || id;
 }

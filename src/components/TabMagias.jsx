@@ -20,7 +20,7 @@ export default function TabMagias({ char, update, derived }) {
     update('habilidadesMagicas', habilidades.filter(h => h.id !== id));
   };
 
-  const useHabilidade = (id) => {
+  const usarHabilidade = (id) => {
     update('habilidadesMagicas', habilidades.map(h => {
       if (h.id !== id) return h;
       const newUsos = Math.min(h.usos + 1, h.maxUsos || 99);
@@ -186,7 +186,7 @@ export default function TabMagias({ char, update, derived }) {
                         {h.desc && <p style={{ fontSize: '0.82rem', color: 'var(--ink-mid)', fontStyle: 'italic', lineHeight: 1.45 }}>{h.desc}</p>}
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flexShrink: 0 }}>
-                        <button className="btn btn-primary btn-sm" onClick={() => useHabilidade(h.id)} disabled={esgotada}>
+                        <button className="btn btn-primary btn-sm" onClick={() => usarHabilidade(h.id)} disabled={esgotada}>
                           ▶ Usar
                         </button>
                         {h.maxUsos > 0 && h.usos > 0 && (

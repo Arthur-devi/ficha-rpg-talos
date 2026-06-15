@@ -1,0 +1,247 @@
+[
+    {
+        "id":  0,
+        "name":  "Conjunto bombeiro",
+        "category":  "Conjunto",
+        "rarity":  "Conjunto",
+        "cost":  "",
+        "damage":  "",
+        "stats":  "Martelo da combustão+Capacete da combustão",
+        "components":  [
+                           "Martelo da combustão",
+                           "Capacete da combustão"
+                       ],
+        "desc":  "O usuário não recebe danos de calor ou de fogo. O usuário se cura no valor de 1d4 se estiver em chamas (1 vez por turno)."
+    },
+    {
+        "id":  1,
+        "name":  "Conjunto da sabedoria indomável",
+        "category":  "Conjunto",
+        "rarity":  "Conjunto",
+        "cost":  "",
+        "damage":  "",
+        "stats":  "Tapa Olho Que tudo Vê+Colete solar+Cálice de sangue+Capa da catástrofe humana",
+        "components":  [
+                           "Tapa Olho Que tudo Vê",
+                           "Colete solar",
+                           "Cálice de sangue",
+                           "Capa da catástrofe humana"
+                       ],
+        "desc":  "O usuário poderá  ver a exata localização de todos os que já encontrou e que vai encontrar. Consegue ter noção mais ou menos da localização de outros itens Divinos. Bloqueie METADE dos ataques físicos e mágicos enquanto estiver ensolarado. Pode trazer uma alma para o mundo dos vivos e possuir alguém com ela. O usuário poderá olhar o futuro e recebe +1 em todos os atributos."
+    },
+    {
+        "id":  2,
+        "name":  "Conjunto secreto do trovão",
+        "category":  "Conjunto",
+        "rarity":  "Conjunto",
+        "cost":  "",
+        "damage":  "",
+        "stats":  "Colírio do trovão+Martelo do trovão",
+        "components":  [
+                           "Colírio do trovão",
+                           "Martelo do trovão"
+                       ],
+        "desc":  "O usuário se transforma em um dos semideuses do trovão. Agora ele pode controlar trovões dos céus e ataques elétricos de inimigos. O martelo do trovão ganha dez dados de dano base permanentemente. Os raios soltados por esta arma agora causarão 15d4 de dano invés de 3d4 e sua área de impacto será igual a 300m."
+    },
+    {
+        "id":  3,
+        "name":  "Conjunto de obsidiana",
+        "category":  "Conjunto",
+        "rarity":  "Conjunto",
+        "cost":  "",
+        "damage":  "",
+        "stats":  "Armadura de obsidiana+Escudo de obsidiana+Capacete de obsidiana",
+        "components":  [
+                           "Armadura de obsidiana",
+                           "Escudo de obsidiana",
+                           "Capacete de obsidiana"
+                       ],
+        "desc":  "A destreza do jogador agora é igual a zero. Dobre os efeitos de resistência dos itens"
+    },
+    {
+        "id":  4,
+        "name":  "Conjunto da divindade primordial",
+        "category":  "Conjunto",
+        "rarity":  "Conjunto",
+        "cost":  "",
+        "damage":  "",
+        "stats":  "A grande espada primordial+A grande armadura primordial",
+        "components":  [
+                           "A grande espada primordial",
+                           "A grande armadura primordial"
+                       ],
+        "desc":  "Uma luz mística envolve o usuário. Agora ele pode voar, criar e destruir a matéria."
+    },
+    {
+        "id":  5,
+        "name":  "Conjunto das chamas infernais",
+        "category":  "Conjunto",
+        "rarity":  "Conjunto",
+        "cost":  "",
+        "damage":  "",
+        "stats":  "Colar das chamas infernais+Sobretudo de chamas negras",
+        "components":  [
+                           "Colar das chamas infernais",
+                           "Sobretudo de chamas negras"
+                       ],
+        "desc":  "O usuário pode conjurar chamas negras de suas mãos. Ele pode soltar este poder nos seus inimigos, causando 3d8 de dano mágico infernal."
+    },
+    {
+        "id":  6,
+        "name":  "Conjunto do gelo verdadeiro",
+        "category":  "Conjunto",
+        "rarity":  "Conjunto",
+        "cost":  "",
+        "damage":  "",
+        "stats":  "Botas gélidas+Armadura gélida+Capacete gélido",
+        "components":  [
+                           "Botas gélidas",
+                           "Armadura gélida",
+                           "Capacete gélido"
+                       ],
+        "desc":  "Toda água corrente em sua volta se transforma em gelo. Qualquer ataque gélido que for desferido pelo usuário será permanente."
+    },
+    {
+        "id":  7,
+        "name":  "Conjunto do necromante guerreiro",
+        "category":  "Conjunto",
+        "rarity":  "Conjunto",
+        "cost":  "",
+        "damage":  "",
+        "stats":  "Armadura de Ledros+Capacete de Ledros",
+        "components":  [
+                           "Armadura de Ledros",
+                           "Capacete de Ledros"
+                       ],
+        "desc":  "Agora o usuário pode reviver uma criatura a escolha e ela ainda terá consciência e saberá quem era quando morreu. Porém, a criatura será controlada totalmente pelo usuário."
+    },
+    {
+        "id":  8,
+        "name":  "Conjunto do ferro",
+        "category":  "Conjunto",
+        "rarity":  "Conjunto",
+        "cost":  "",
+        "damage":  "",
+        "stats":  "Armadura de ferro+Espada de ferro+Escudo de ferro",
+        "components":  [
+                           "Armadura de ferro",
+                           "Espada de ferro",
+                           "Escudo de ferro"
+                       ],
+        "desc":  "Da ao jogador +5 de defesa enquanto estes itens estiverem equipados"
+    },
+    {
+        "id":  9,
+        "name":  "Conjunto escarlate amaldiçoado",
+        "category":  "Conjunto",
+        "rarity":  "Conjunto",
+        "cost":  "",
+        "damage":  "",
+        "stats":  "Botas escarlates amaldiçoadas+Colete escarlate amaldiçoado+Capacete escarlate amaldiçoado",
+        "components":  [
+                           "Botas escarlates amaldiçoadas",
+                           "Colete escarlate amaldiçoado",
+                           "Capacete escarlate amaldiçoado"
+                       ],
+        "desc":  "Dá ao jogador +30 de defesa. Contudo, o usuário pode enlouquecer periodicamente pelo poder do conjunto."
+    },
+    {
+        "id":  10,
+        "name":  "Conjunto de sangue",
+        "category":  "Conjunto",
+        "rarity":  "Conjunto",
+        "cost":  "",
+        "damage":  "",
+        "stats":  "Espada de sangue + capacete sanguinário + armadura de sangue",
+        "components":  [
+                           "Espada de sangue",
+                           "capacete sanguinário",
+                           "armadura de sangue"
+                       ],
+        "desc":  "O usuário é imune a sangramento ou qualquer outro efeito de dano por turno.\nDá permanentemente ao jogador +10 de constituição na primeira vez que estiver com todas as peças do conjunto."
+    },
+    {
+        "id":  11,
+        "name":  "Conjunto da calamidade",
+        "category":  "Conjunto",
+        "rarity":  "Conjunto",
+        "cost":  "",
+        "damage":  "",
+        "stats":  "Capacete da calamidade + Armadura da calamidade + Espada da calamidade + Anel da calamidade + Capa da calamidade + botas da calamidade + colar da calamidade + monóculo da calamidade.",
+        "components":  [
+                           "Capacete da calamidade",
+                           "Armadura da calamidade",
+                           "Espada da calamidade",
+                           "Anel da calamidade",
+                           "Capa da calamidade",
+                           "botas da calamidade",
+                           "colar da calamidade",
+                           "monóculo da calamidade."
+                       ],
+        "desc":  "O jogador não é afetado por nenhum efeito negativo dos itens da calamidade (apesar de ainda estar com os efeitos).\nTodos as criaturas presentes no combate junto do jogador, herdarão todos os efeitos negativos do conjunto até o fim do combate."
+    },
+    {
+        "id":  12,
+        "name":  "Conjunto Imune",
+        "category":  "Conjunto",
+        "rarity":  "Conjunto",
+        "cost":  "",
+        "damage":  "",
+        "stats":  "Armadura Imune + Capa Imune + Anel Imune + Calça Imune + Botas Imune + Capacete Imune + Espada Imune",
+        "components":  [
+                           "Armadura Imune",
+                           "Capa Imune",
+                           "Anel Imune",
+                           "Calça Imune",
+                           "Botas Imune",
+                           "Capacete Imune",
+                           "Espada Imune"
+                       ],
+        "desc":  "o Conjunto do jogador é imune a tudo incluse ao tempo mas somente o conjunto, efeitos não tem mais duração em turnos eles são permanentes até o final do combate."
+    },
+    {
+        "id":  13,
+        "name":  "Conjunto dos Pecados",
+        "category":  "Conjunto",
+        "rarity":  "Conjunto",
+        "cost":  "",
+        "damage":  "",
+        "stats":  "Pecado do Genocídio + Pecado da Ganância + Pecado da Falsidade + Pecado da Luxúria",
+        "components":  [
+                           "Pecado do Genocídio",
+                           "Pecado da Ganância",
+                           "Pecado da Falsidade",
+                           "Pecado da Luxúria"
+                       ],
+        "desc":  "O conjunto deve estar em contato direto com qualquer região de seu corpo. Atualmente se encontra fincado nas costas de Zander. O usuário passará dias e noites em claro, jamais poderá dormir por mais do que duas horas e será atormentado por todos os pecados que cometeu, sendo privado até mesmo da morte, a qual desejará abraçar com todas as suas forças."
+    },
+    {
+        "id":  14,
+        "name":  "Conjunto da Fênix",
+        "category":  "Conjunto",
+        "rarity":  "Conjunto",
+        "cost":  "",
+        "damage":  "",
+        "stats":  "Lágrima da Fenix + Mergulho da Fenix",
+        "components":  [
+                           "Lágrima da Fenix",
+                           "Mergulho da Fenix"
+                       ],
+        "desc":  "Não consuma a lágrima da Fenix ao zerar os pontos de vida."
+    },
+    {
+        "id":  15,
+        "name":  "Conjunto do Usurpador Temerário",
+        "category":  "Conjunto",
+        "rarity":  "Conjunto",
+        "cost":  "",
+        "damage":  "",
+        "stats":  "Abissal+Saitama+Polaroid",
+        "components":  [
+                           "Abissal",
+                           "Saitama",
+                           "Polaroid"
+                       ],
+        "desc":  "Efeito do conjunto: No momento em que todas as partes forem equipados pelo usuário, todos os efeitos do itens isolados deste conjunto são dobrados."
+    }
+]
