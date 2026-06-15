@@ -252,7 +252,7 @@ select { cursor: pointer; }
   border-radius: var(--radius-sm);
 }
 
-/* HP / Mana bar */
+/* HP bar */
 .stat-bar-wrap {
   display: flex;
   flex-direction: column;
@@ -271,7 +271,6 @@ select { cursor: pointer; }
   transition: width 0.3s;
 }
 .stat-bar-hp { background: linear-gradient(90deg, #b91c1c, #dc2626); }
-.stat-bar-mana { background: linear-gradient(90deg, #1d4ed8, #3b82f6); }
 
 /* Nav */
 .nav {

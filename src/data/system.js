@@ -920,7 +920,7 @@ export const SHIKATAS_HABILIDADES = {
     { nivel: 2, nome: 'Repreensão Pactual', tipo: 'reacao', usos: '2x desc. longo', desc: 'Ao ser atacado corpo a corpo ou à distância, responde com fogo místico: 2d10+magia de dano mágico. Nv.6: 4d10+magia e 3 usos.' },
     { nivel: 2, nome: 'Visualização do Além', tipo: 'passiva', desc: 'Enxerga seres consumidos pela marca do pacto, identificando aliados e inimigos entre Pactuados.' },
     { nivel: 3, nome: 'Firmar Novo Acordo', tipo: 'ativo', usos: '1x por dia', desc: 'É lançado ao domínio da deidade para renovar/fortalecer o pacto, obtendo novos poderes mediante tributo ou tarefas. O tempo ao redor para.' },
-    { nivel: 3, nome: 'Teleporte', tipo: 'bonus', desc: 'Teleporta até 6m por 3 mana como ação bônus. Nv.9: 12m por 5 mana e pode ser reação.' },
+    { nivel: 3, nome: 'Teleporte', tipo: 'bonus', desc: 'Teleporta até 6m como ação bônus. Nv.9: 12m e pode ser reação.' },
     { nivel: 3, nome: 'Poder Eletromagnético', tipo: 'ativo', usos: '1x desc. longo', desc: 'Marca um alvo com magia roxa: 5 dano mágico, fragiliza contra magias do Feiticeiro e torna os próximos 2 ataques contra ele certeiros.' },
     { nivel: 4, nome: 'Proteção dos Elementos', tipo: 'ativo', usos: '1x desc. curto', desc: 'Campo cintilante de 3m ao redor do Feiticeiro: +3 CA para todos dentro por 3 turnos.' },
     { nivel: 5, nome: 'Elemento Fogo (Passiva)', tipo: 'passiva', desc: 'Controla chamas vistas em até 20m, incluindo ataques inimigos com teste quando necessário. Ataques de fogo: ação bônus, 3d8+magia.' },
@@ -1171,10 +1171,10 @@ export const SHIKATAS_HABILIDADES = {
   ],
 
   spellstealer: [
-    { nivel: 1, nome: 'Fluxo de Mana (Passiva)', tipo: 'passiva', desc: 'Linhas de mana nos braços: ataques físicos causam +2×mod magia de dano mágico permanentemente.' },
+    { nivel: 1, nome: 'Fluxo Arcano (Passiva)', tipo: 'passiva', desc: 'Linhas arcanas nos braços: ataques físicos causam +2×mod magia de dano mágico permanentemente.' },
     { nivel: 1, nome: 'Catarse Mágica', tipo: 'bonus', usos: '2x desc. curto (nv.8: ilimitado)', desc: 'Próximo ataque: +1d8 (nv.4: 2d8, nv.8: 1d10, nv.12: 1d12) de dano mágico adicional.' },
     { nivel: 1, nome: 'Visualização (Passiva)', tipo: 'passiva', desc: 'Distingue instantaneamente seres mágicos de não-mágicos.' },
-    { nivel: 2, nome: 'Fortificação de Mana', tipo: 'ativo', usos: '2x desc. curto', desc: 'Escudo 20+mod cons (nv.7: 35, nv.17: 45) por 2-3 turnos. Imune a magias de nível inferior.' },
+    { nivel: 2, nome: 'Fortificação Arcana', tipo: 'ativo', usos: '2x desc. curto', desc: 'Escudo 20+mod cons (nv.7: 35, nv.17: 45) por 2-3 turnos. Imune a magias de nível inferior.' },
     { nivel: 2, nome: 'Toque do Regicida', tipo: 'ativo', usos: '2x desc. longo (nv.20: 4x)', desc: 'Cura 1d10+cons e causa 1d4+magia. Dobra a cura contra mágicos. Escala até 5d10/6d4.' },
     { nivel: 3, nome: 'Roubo de Atributos (Passiva)', tipo: 'passiva', desc: 'Após crítico: rouba 1 ponto de atributo (1d6 determina qual). Nv.7: 2 pontos.' },
     { nivel: 3, nome: 'Usurpar', tipo: 'ativo', usos: '1x desc. longo (nv.20: 2x)', desc: 'Rouba habilidade mais formidável do alvo. Inimigo não pode usá-la. Nv.11: 20m/2h/2 habilidades.' },
@@ -1189,7 +1189,7 @@ export const SHIKATAS_HABILIDADES = {
     { nivel: 18, nome: 'Rulestealer (Passiva)', tipo: 'passiva', desc: 'Modificadores calculados com base nos TOTAIS dos atributos (não mais valor/2).' },
     { nivel: 20, nome: 'Absolvição do Destino', tipo: 'ativo', usos: '1x desc. longo', desc: 'Drena TODOS os pontos de atributo de todos no campo. Mortos durante = doam atributos permanentemente.' },
     // Subclasse Ditador das Almas
-    { nivel: 5, nome: '[Ditador] Ditar', tipo: 'ativo', usos: '1x por criatura', subclasse: 'Ditador das Almas', desc: 'Olhos envolvidos em mana: alvos que encarem são submetidos à vontade brevemente. Após resistir: imune.' },
+    { nivel: 5, nome: '[Ditador] Ditar', tipo: 'ativo', usos: '1x por criatura', subclasse: 'Ditador das Almas', desc: 'Olhos envolvidos em energia arcana: alvos que encarem são submetidos à vontade brevemente. Após resistir: imune.' },
     { nivel: 5, nome: '[Ditador] Roubar a Essência', tipo: 'ativo', usos: '1x desc. longo (nv.8: 2x)', subclasse: 'Ditador das Almas', desc: 'Arranca porção da alma: 2d10+magia (nv.8: 4d10). Acumula almas.' },
     { nivel: 5, nome: '[Ditador] Tudo É Minha Propriedade', tipo: 'ativo', subclasse: 'Ditador das Almas', desc: 'Consome almas: absorve 10% (nv.14: 20%) de 1 atributo aleatório (mín 1).' },
     { nivel: 8, nome: '[Ditador] Consumir os Fracos (Passiva)', tipo: 'passiva', subclasse: 'Ditador das Almas', desc: 'Cada alma consumida: +1 dado de cura no Toque do Regicida + cura 4d6 HP.' },

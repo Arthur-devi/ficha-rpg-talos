@@ -15,7 +15,7 @@ const TABS = [
   { id: 'atributos', label: 'Atributos', icon: '💪' },
   { id: 'habilidades', label: 'Habilidades', icon: '⚔️' },
   { id: 'inventario', label: 'Inventário', icon: '🎒' },
-  { id: 'magias', label: 'Magias', icon: '✨' },
+  { id: 'magias', label: 'Poderes', icon: '✦' },
   { id: 'sistema', label: 'Sistema', icon: '📚' },
   { id: 'notas', label: 'Notas', icon: '📝' },
 ];
@@ -81,8 +81,8 @@ export default function App() {
         {activeTab === 'identidade' && <TabIdentidade char={char} update={update} />}
         {activeTab === 'atributos' && <TabAtributos char={char} update={update} updateAttr={updateAttr} derived={derived} toggleEstado={toggleEstado} togglePericia={togglePericia} />}
         {activeTab === 'habilidades' && <TabHabilidades char={char} update={update} />}
-        {activeTab === 'inventario' && <TabInventario char={char} addInventoryItem={addInventoryItem} removeInventoryItem={removeInventoryItem} equipItem={equipItem} />}
-        {activeTab === 'magias' && <TabMagias char={char} update={update} derived={derived} />}
+        {activeTab === 'inventario' && <TabInventario char={char} derived={derived} addInventoryItem={addInventoryItem} removeInventoryItem={removeInventoryItem} equipItem={equipItem} />}
+        {activeTab === 'magias' && <TabMagias char={char} update={update} />}
         {activeTab === 'sistema' && <TabSistema />}
         {activeTab === 'notas' && <TabNotas char={char} update={update} />}
       </main>

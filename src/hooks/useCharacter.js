@@ -1,4 +1,6 @@
 import { useState, useCallback } from 'react';
+import itemsRaw from '../data/items_raw.json';
+import { ITEM_ATTRIBUTE_KEYS, aggregateItemEffects } from '../data/itemEffects';
 
 const defaultCharacter = {
   // Identity
@@ -37,10 +39,6 @@ const defaultCharacter = {
   hpAtual: 12,
   hpTemp: 0,
 
-  // Mana
-  manaMax: 0,
-  manaAtual: 0,
-
   // CA
   caBase: 8,
   caBonus: 0,
@@ -71,11 +69,15 @@ export function useCharacter() {
   const [char, setChar] = useState(() => {
     try {
       const saved = localStorage.getItem('talos_char_draft');
-      if (saved) return { ...defaultCharacter, ...JSON.parse(saved) };
+      if (saved) {
+        const normalized = normalizeCharacter(JSON.parse(saved));
+        localStorage.setItem('talos_char_draft', JSON.stringify(normalized));
+        return normalized;
+      }
     } catch {
       // localStorage can be unavailable in restricted browser contexts.
     }
-    return defaultCharacter;
+    return normalizeCharacter(defaultCharacter);
   });
 
   const update = useCallback((path, value) => {
@@ -113,7 +115,7 @@ export function useCharacter() {
     reader.onload = (e) => {
       try {
         const data = JSON.parse(e.target.result);
-        const merged = { ...defaultCharacter, ...data };
+        const merged = normalizeCharacter(data);
         setChar(merged);
         localStorage.setItem('talos_char_draft', JSON.stringify(merged));
       } catch {
@@ -153,11 +155,18 @@ export function useCharacter() {
   const equipItem = useCallback((itemId, slot) => {
     setChar(prev => {
       const newSlots = { ...prev.equippedSlots };
-      // Unequip from previous slot if any
+      // Unequip from previous slot and replace any item already in the target slot.
       Object.keys(newSlots).forEach(s => { if (newSlots[s] === itemId) delete newSlots[s]; });
+      if (slot) {
+        Object.keys(newSlots).forEach(s => { if (s === slot) delete newSlots[s]; });
+      }
       if (slot) newSlots[slot] = itemId;
       const newInv = prev.inventario.map(i =>
-        i.itemId === itemId ? { ...i, equipped: !!slot, slot } : i
+        i.itemId === itemId
+          ? { ...i, equipped: !!slot, slot }
+          : slot && i.slot === slot
+            ? { ...i, equipped: false, slot: null }
+            : i
       );
       const next = { ...prev, equippedSlots: newSlots, inventario: newInv };
       try { localStorage.setItem('talos_char_draft', JSON.stringify(next)); } catch {
@@ -192,36 +201,77 @@ export function useCharacter() {
   // Derived stats
   const getMod = (attrVal) => Math.floor(attrVal / 2);
 
-  // Total magia = base + INT÷2 (conversão automática do sistema)
-  const magiaFromInt = Math.floor(char.attrs.inteligencia / 2);
-  const magiaTotal = char.attrs.magia + magiaFromInt;
+  const equippedItems = Object.values(char.equippedSlots || {})
+    .map(itemId => itemsRaw.find(item => item.id === itemId))
+    .filter(Boolean);
+  const itemEffects = aggregateItemEffects(equippedItems);
+
+  const attrsTotal = Object.fromEntries(
+    ITEM_ATTRIBUTE_KEYS.map(key => [key, (char.attrs[key] || 0) + (itemEffects.attrs[key] || 0)])
+  );
+
+  // Total magia = base + bônus de itens + INT÷2 (conversão automática do sistema)
+  const magiaFromInt = Math.floor(attrsTotal.inteligencia / 2);
+  const magiaTotal = attrsTotal.magia + magiaFromInt;
+
+  const deslocamentoBonus = Math.floor(attrsTotal.destreza / 5);
+  const limiteCansacoBonus = Math.floor(attrsTotal.constituicao / 2);
 
   const derived = {
-    modForca: getMod(char.attrs.forca),
+    modForca: getMod(attrsTotal.forca),
     modMagia: getMod(magiaTotal),   // modificador usa magia total (com bônus INT)
-    modCon: getMod(char.attrs.constituicao),
-    modInt: getMod(char.attrs.inteligencia),
-    modPer: getMod(char.attrs.percepcao),
-    modDes: getMod(char.attrs.destreza),
-    modCar: getMod(char.attrs.carisma),
-    modDef: getMod(char.attrs.defesa),
-    modSor: getMod(char.attrs.sorte),
+    modCon: getMod(attrsTotal.constituicao),
+    modInt: getMod(attrsTotal.inteligencia),
+    modPer: getMod(attrsTotal.percepcao),
+    modDes: getMod(attrsTotal.destreza),
+    modCar: getMod(attrsTotal.carisma),
+    modDef: getMod(attrsTotal.defesa),
+    modSor: getMod(attrsTotal.sorte),
+    attrsTotal,
+    itemEffects,
+    itemAttrBonuses: itemEffects.attrs,
+    caItemBonus: itemEffects.ca,
+    hpItemBonus: itemEffects.hpMax,
+    deslocamentoItemBonus: itemEffects.deslocamento,
     // Int -> Magia bonus: 2 INT = 1 Magia
     magiaFromInt,
     magiaTotal,
     // Destreza -> Deslocamento: 5 DES = +1
-    deslocamentoBonus: Math.floor(char.attrs.destreza / 5),
+    deslocamentoBonus,
+    deslocamentoTotal: (char.deslocamento || 0) + deslocamentoBonus + itemEffects.deslocamento,
     // CON -> Limite Cansaço: 2 CON = +1
-    limiteCansacoBonus: Math.floor(char.attrs.constituicao / 2),
+    limiteCansacoBonus,
+    limiteCansacoTotal: (char.limiteCansaco || 0) + limiteCansacoBonus,
     // CA = 8 + mod DES (limit 4) + mod CON (limit 4)
-    caTotal: 8 + Math.min(getMod(char.attrs.destreza), 4) + Math.min(getMod(char.attrs.constituicao), 4) + char.caBonus,
+    caTotal: 8 + Math.min(getMod(attrsTotal.destreza), 4) + Math.min(getMod(attrsTotal.constituicao), 4) + char.caBonus + itemEffects.ca,
     // HP base = 12 + mod CON
-    hpBase: 12 + getMod(char.attrs.constituicao),
-    // Mana = magia total (base + INT÷2)
-    manaBase: magiaTotal,
+    hpBase: 12 + getMod(attrsTotal.constituicao) + itemEffects.hpMax,
   };
 
   return { char, update, updateAttr, exportChar, importChar, addInventoryItem, removeInventoryItem, equipItem, toggleEstado, togglePericia, derived };
+}
+
+function normalizeCharacter(data = {}) {
+  const merged = {
+    ...defaultCharacter,
+    ...data,
+    attrs: { ...defaultCharacter.attrs, ...(data.attrs || {}) },
+    moedas: { ...defaultCharacter.moedas, ...(data.moedas || {}) },
+  };
+
+  for (const legacyField of ['ma' + 'naMax', 'ma' + 'naAtual']) {
+    delete merged[legacyField];
+  }
+
+  if (Array.isArray(merged.habilidadesMagicas)) {
+    merged.habilidadesMagicas = merged.habilidadesMagicas.map(habilidade => {
+      const cleaned = { ...habilidade };
+      delete cleaned.custo;
+      return cleaned;
+    });
+  }
+
+  return merged;
 }
 
 function deepSet(obj, path, value) {

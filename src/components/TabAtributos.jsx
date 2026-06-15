@@ -1,6 +1,6 @@
 import { ATTRIBUTES, PERICIAS_BY_ATTR, ESTADOS } from '../data/system';
 
-function AttrBox({ attr, value, mod, onChange, minValue = -10 }) {
+function AttrBox({ attr, value, mod, onChange, minValue = -10, itemBonus = 0 }) {
   const isMagia = attr.key === 'magia';
   return (
     <div className="attr-box" style={isMagia ? { background: 'rgba(29,78,216,0.04)', borderColor: 'rgba(29,78,216,0.25)' } : {}}>
@@ -22,17 +22,21 @@ function AttrBox({ attr, value, mod, onChange, minValue = -10 }) {
       <div style={{ fontSize: '0.6rem', color: isMagia ? '#1d4ed8' : 'var(--ink-faded)', marginTop: 4, textAlign: 'center', fontFamily: 'var(--font-heading)', letterSpacing: '0.04em', lineHeight: 1.2 }}>
         {attr.label}{isMagia ? ' *' : ''}
       </div>
+      {itemBonus !== 0 && (
+        <div style={{ fontSize: '0.58rem', color: 'var(--gold-dark)', marginTop: 3, fontFamily: 'var(--font-heading)', lineHeight: 1.1 }}>
+          {itemBonus > 0 ? '+' : ''}{itemBonus} item
+        </div>
+      )}
     </div>
   );
 }
 
 export default function TabAtributos({ char, update, updateAttr, derived, toggleEstado, togglePericia }) {
   const hpPct = Math.max(0, Math.min(100, (char.hpAtual / char.hpMax) * 100));
-  const manaPct = Math.max(0, Math.min(100, (char.manaAtual / (derived.manaBase || 1)) * 100));
 
   return (
     <div className="stack">
-      {/* HP & Mana & CA */}
+      {/* HP & CA */}
       <div className="card">
         <div className="card-header"><span>❤️</span><h3>Vitais</h3></div>
         <div className="card-body">
@@ -63,33 +67,15 @@ export default function TabAtributos({ char, update, updateAttr, derived, toggle
               </div>
             </div>
 
-            {/* Mana */}
-            <div>
-              <label>Mana</label>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6 }}>
-                <input type="number" value={char.manaAtual} min={0} max={derived.manaBase}
-                  onChange={e => update('manaAtual', Number(e.target.value))}
-                  style={{ width: 70, textAlign: 'center', fontFamily: 'var(--font-heading)', fontSize: '1.4rem', fontWeight: 600 }} />
-                <span style={{ color: 'var(--ink-faded)' }}>/</span>
-                <span style={{ fontFamily: 'var(--font-heading)', fontSize: '1.1rem', color: 'var(--ink-mid)', paddingTop: 6 }}>{derived.manaBase}</span>
-              </div>
-              <div className="stat-bar-track">
-                <div className="stat-bar-fill stat-bar-mana" style={{ width: `${manaPct}%` }} />
-              </div>
-              <div style={{ marginTop: 10, fontSize: '0.75rem', color: 'var(--ink-faded)', fontFamily: 'var(--font-heading)' }}>
-                MAG + INT÷2 = {char.attrs.magia} + {derived.magiaFromInt} = {derived.manaBase}
-              </div>
-            </div>
-
             {/* CA */}
             <div>
               <label>Classe de Armadura (CA)</label>
               <div className="big-num" style={{ marginBottom: 4 }}>{derived.caTotal}</div>
               <div style={{ fontSize: '0.72rem', color: 'var(--ink-faded)', fontFamily: 'var(--font-heading)', lineHeight: 1.6 }}>
-                8 + DES(lim.4) + CON(lim.4) + bônus
+                8 + DES(lim.4) + CON(lim.4) + manual + itens ({derived.caItemBonus > 0 ? '+' : ''}{derived.caItemBonus})
               </div>
               <div style={{ marginTop: 8 }}>
-                <label>Bônus CA (itens/habilidades)</label>
+                <label>Bônus CA manual</label>
                 <input type="number" value={char.caBonus} min={0}
                   onChange={e => update('caBonus', Number(e.target.value))}
                   style={{ width: 80 }} />
@@ -100,21 +86,26 @@ export default function TabAtributos({ char, update, updateAttr, derived, toggle
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div>
                 <label>Deslocamento (sqm)</label>
-                <input type="number" value={char.deslocamento} min={0}
-                  onChange={e => update('deslocamento', Number(e.target.value))}
+                <input type="number" value={derived.deslocamentoTotal} min={derived.deslocamentoBonus + derived.deslocamentoItemBonus}
+                  onChange={e => update('deslocamento', Math.max(0, Number(e.target.value) - derived.deslocamentoBonus - derived.deslocamentoItemBonus))}
                   style={{ width: 80 }} />
-                <div style={{ fontSize: '0.72rem', color: 'var(--ink-faded)', fontFamily: 'var(--font-heading)' }}>Bônus DES: +{derived.deslocamentoBonus}</div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--ink-faded)', fontFamily: 'var(--font-heading)' }}>
+                  Base {char.deslocamento || 0} + DES {derived.deslocamentoBonus} + itens {derived.deslocamentoItemBonus > 0 ? '+' : ''}{derived.deslocamentoItemBonus} = {derived.deslocamentoTotal}
+                </div>
               </div>
               <div>
                 <label>Limite de Cansaço</label>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <input type="number" value={char.cansacoAtual} min={0}
-                    onChange={e => update('cansacoAtual', Number(e.target.value))}
+                  <input type="number" value={char.cansacoAtual} min={0} max={derived.limiteCansacoTotal}
+                    onChange={e => update('cansacoAtual', Math.max(0, Math.min(derived.limiteCansacoTotal, Number(e.target.value))))}
                     style={{ width: 60, textAlign: 'center' }} />
                   <span style={{ color: 'var(--ink-faded)' }}>/</span>
-                  <input type="number" value={char.limiteCansaco} min={1}
-                    onChange={e => update('limiteCansaco', Number(e.target.value))}
+                  <input type="number" value={derived.limiteCansacoTotal} min={derived.limiteCansacoBonus}
+                    onChange={e => update('limiteCansaco', Math.max(0, Number(e.target.value) - derived.limiteCansacoBonus))}
                     style={{ width: 60, textAlign: 'center' }} />
+                </div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--ink-faded)', fontFamily: 'var(--font-heading)' }}>
+                  Base {char.limiteCansaco || 0} + CON {derived.limiteCansacoBonus} = {derived.limiteCansacoTotal}
                 </div>
               </div>
               <div>
@@ -135,8 +126,10 @@ export default function TabAtributos({ char, update, updateAttr, derived, toggle
           <div className="attrs-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))', gap: 10, justifyItems: 'center' }}>
             {ATTRIBUTES.map(attr => {
               const isMagia = attr.key === 'magia';
-              // Magia: valor exibido = base + bonus de INT; minimo editavel = magiaFromInt
-              const displayValue = isMagia ? derived.magiaTotal : char.attrs[attr.key];
+              const itemBonus = derived.itemAttrBonuses?.[attr.key] || 0;
+              // Valor exibido = base + bônus de item. Magia ainda soma INT÷2.
+              const displayValue = isMagia ? derived.magiaTotal : derived.attrsTotal[attr.key];
+              const lockedBonus = isMagia ? derived.magiaFromInt + itemBonus : itemBonus;
               // Mapa explícito de abbr -> chave do derived (evita bug de geração dinâmica)
               const modMap = {
                 FOR: 'modForca', MAG: 'modMagia', CON: 'modCon',
@@ -151,9 +144,10 @@ export default function TabAtributos({ char, update, updateAttr, derived, toggle
                   value={displayValue}
                   mod={mod}
                   onChange={isMagia
-                    ? v => updateAttr('magia', Math.max(0, v - derived.magiaFromInt))
-                    : v => updateAttr(attr.key, v)}
-                  minValue={isMagia ? derived.magiaFromInt : -10}
+                    ? v => updateAttr('magia', Math.max(0, v - lockedBonus))
+                    : v => updateAttr(attr.key, v - lockedBonus)}
+                  minValue={isMagia ? lockedBonus : -10 + lockedBonus}
+                  itemBonus={itemBonus}
                 />
               );
             })}
@@ -163,9 +157,16 @@ export default function TabAtributos({ char, update, updateAttr, derived, toggle
             <div style={{ fontFamily: 'var(--font-heading)', fontSize: '0.7rem', color: 'var(--ink-light)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>Conversões Automáticas</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, fontSize: '0.82rem', color: 'var(--ink-mid)' }}>
               <span>INT ({char.attrs.inteligencia}) → +{derived.magiaFromInt} Magia (total: {derived.magiaTotal})</span>
-              <span>DES ({char.attrs.destreza}) → +{derived.deslocamentoBonus} Deslocamento</span>
-              <span>CON ({char.attrs.constituicao}) → +{derived.limiteCansacoBonus} Limite Cansaço</span>
+              <span>DES ({char.attrs.destreza}) → +{derived.deslocamentoBonus} Deslocamento (total: {derived.deslocamentoTotal})</span>
+              <span>CON ({char.attrs.constituicao}) → +{derived.limiteCansacoBonus} Limite Cansaço (total: {derived.limiteCansacoTotal})</span>
             </div>
+            {derived.itemEffects.summary.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
+                {derived.itemEffects.summary.map(effect => (
+                  <span key={effect} className="badge" style={{ background: '#fff7ed', borderColor: '#d97706', color: '#92400e' }}>{effect}</span>
+                ))}
+              </div>
+            )}
           </div>
 
           <div style={{ marginTop: 12, padding: '8px 12px', background: 'rgba(248,250,252,0.5)', border: '1px dashed var(--parch-400)', borderRadius: 'var(--radius-sm)', fontSize: '0.75rem', color: 'var(--ink-faded)', fontFamily: 'var(--font-heading)', lineHeight: 1.8 }}>

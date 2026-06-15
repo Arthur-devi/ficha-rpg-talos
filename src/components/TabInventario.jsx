@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import itemsRaw from '../data/items_raw.json';
 import { ITEM_SLOTS, RARIDADE_CONFIG } from '../data/system';
+import { summarizeItemEffects } from '../data/itemEffects';
 
 const RARIDADE_ORDER = ['Lixo', 'Comum', 'Raro', 'Épico', 'Lendário', 'Pacto', 'Divino', 'Conjunto'];
 
@@ -19,6 +20,7 @@ function RarityBadge({ rarity }) {
 function ItemDetail({ item, onAdd, inInventory }) {
   const hasStats = item.stats && item.stats !== '—';
   const statIcon = item.category === 'Conjunto' ? '🔗' : item.category === 'Armadura' || item.category === 'Escudo' ? '🛡️' : '📋';
+  const effectSummary = summarizeItemEffects(item);
   return (
     <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--parch-300)', display: 'flex', gap: 12, alignItems: 'flex-start' }}>
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -33,6 +35,13 @@ function ItemDetail({ item, onAdd, inInventory }) {
           </div>
         ) : item.damage && <div style={{ fontSize: '0.78rem', color: 'var(--red-old)', marginBottom: 2 }}>⚔️ {item.damage}</div>}
         {item.cost && item.cost !== '-' && <div style={{ fontSize: '0.78rem', color: 'var(--gold-dark)', marginBottom: 4 }}>💰 {item.cost}</div>}
+        {effectSummary.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, margin: '6px 0' }}>
+            {effectSummary.map(effect => (
+              <span key={effect} className="badge" style={{ background: '#fff7ed', borderColor: '#d97706', color: '#92400e' }}>{effect}</span>
+            ))}
+          </div>
+        )}
         <div style={{ fontSize: '0.78rem', color: 'var(--ink-mid)', fontStyle: 'italic', lineHeight: 1.45, whiteSpace: 'pre-line' }}>{item.desc}</div>
       </div>
       <button className="btn btn-secondary btn-sm" style={{ flexShrink: 0 }} onClick={() => onAdd(item)}>
@@ -48,6 +57,7 @@ function SlotGrid({ char, items, onUnequip }) {
       {ITEM_SLOTS.map(slot => {
         const equippedId = char.equippedSlots?.[slot.id];
         const equippedItem = equippedId !== undefined ? items.find(i => i.id === equippedId) : null;
+        const effectSummary = equippedItem ? summarizeItemEffects(equippedItem) : [];
         return (
           <div key={slot.id} style={{
             padding: '8px 10px', border: `1px solid ${equippedItem ? 'var(--gold-dark)' : 'var(--parch-300)'}`,
@@ -58,9 +68,18 @@ function SlotGrid({ char, items, onUnequip }) {
               {slot.icon} {slot.label}
             </div>
             {equippedItem ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ flex: 1, fontSize: '0.78rem', fontFamily: 'var(--font-heading)', color: 'var(--ink-dark)', lineHeight: 1.3 }}>{equippedItem.name}</span>
-                <button className="btn btn-danger btn-icon" style={{ fontSize: '0.7rem', flexShrink: 0 }} onClick={() => onUnequip(equippedItem.id, slot.id)} title="Desequipar">×</button>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ flex: 1, fontSize: '0.78rem', fontFamily: 'var(--font-heading)', color: 'var(--ink-dark)', lineHeight: 1.3 }}>{equippedItem.name}</span>
+                  <button className="btn btn-danger btn-icon" style={{ fontSize: '0.7rem', flexShrink: 0 }} onClick={() => onUnequip(equippedItem.id, slot.id)} title="Desequipar">×</button>
+                </div>
+                {effectSummary.length > 0 && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
+                    {effectSummary.slice(0, 4).map(effect => (
+                      <span key={effect} className="badge" style={{ fontSize: '0.55rem', background: '#fff7ed', borderColor: '#d97706', color: '#92400e' }}>{effect}</span>
+                    ))}
+                  </div>
+                )}
               </div>
             ) : (
               <div style={{ fontSize: '0.75rem', color: 'var(--ink-faded)', fontStyle: 'italic' }}>Vazio</div>
@@ -72,7 +91,7 @@ function SlotGrid({ char, items, onUnequip }) {
   );
 }
 
-export default function TabInventario({ char, addInventoryItem, removeInventoryItem, equipItem }) {
+export default function TabInventario({ char, derived, addInventoryItem, removeInventoryItem, equipItem }) {
   const [search, setSearch] = useState('');
   const [filterCat, setFilterCat] = useState('');
   const [filterRar, setFilterRar] = useState('');
@@ -131,6 +150,18 @@ export default function TabInventario({ char, addInventoryItem, removeInventoryI
         <div className="card">
           <div className="card-header"><span>🛡️</span><h3>Itens Equipados</h3></div>
           <div className="card-body">
+            {derived.itemEffects.summary.length > 0 && (
+              <div style={{ border: '1px solid var(--parch-300)', background: 'rgba(253,246,227,0.55)', borderRadius: 'var(--radius-md)', padding: '10px 12px', marginBottom: 12 }}>
+                <div style={{ fontFamily: 'var(--font-heading)', fontSize: '0.68rem', color: 'var(--ink-light)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
+                  Resumo efetivo equipado
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {derived.itemEffects.summary.map(effect => (
+                    <span key={effect} className="badge" style={{ background: '#fff7ed', borderColor: '#d97706', color: '#92400e' }}>{effect}</span>
+                  ))}
+                </div>
+              </div>
+            )}
             <SlotGrid char={char} items={itemsRaw} onUnequip={handleUnequip} />
             <p style={{ marginTop: 12, fontSize: '0.75rem', color: 'var(--ink-faded)', fontStyle: 'italic' }}>
               Para equipar um item, vá para <strong>Mochila</strong> e clique em "Equipar" no item desejado.
@@ -160,6 +191,7 @@ export default function TabInventario({ char, addInventoryItem, removeInventoryI
                 {inventoryItems.map(({ itemId, qty, equipped, slot, item }) => {
                   if (!item) return null;
                   const isEquipped = equipped && slot;
+                  const effectSummary = summarizeItemEffects(item);
                   return (
                     <div key={itemId} className={`item-card ${isEquipped ? 'equipped' : ''}`}>
                       <div style={{ flex: 1, minWidth: 0 }}>
@@ -171,6 +203,13 @@ export default function TabInventario({ char, addInventoryItem, removeInventoryI
                         {item.damage && <div style={{ fontSize: '0.75rem', color: 'var(--red-old)' }}>⚔️ {item.damage}</div>}
                         {item.stats && item.stats !== '—' && (
                           <div style={{ fontSize: '0.72rem', color: 'var(--ink-light)', lineHeight: 1.35, marginTop: 2 }}>{item.stats.substring(0, 120)}{item.stats.length > 120 ? '…' : ''}</div>
+                        )}
+                        {effectSummary.length > 0 && (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 6 }}>
+                            {effectSummary.map(effect => (
+                              <span key={effect} className="badge" style={{ background: '#fff7ed', borderColor: '#d97706', color: '#92400e' }}>{effect}</span>
+                            ))}
+                          </div>
                         )}
                         <div style={{ fontSize: '0.75rem', color: 'var(--ink-faded)', fontStyle: 'italic', lineHeight: 1.4, marginTop: 2 }}>{(item.desc || '').substring(0, 120)}{(item.desc || '').length > 120 ? '…' : ''}</div>
                       </div>

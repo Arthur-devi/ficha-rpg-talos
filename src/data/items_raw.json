@@ -3867,7 +3867,7 @@
         "cost":  "29pd",
         "damage":  "",
         "stats":  "—",
-        "desc":  "É um amuleto que se alimenta de magia. Quanto mais magia é enviado ao receptáculo, mais força ela entrega ao usuário. Curas são aumentadas em 100% quando envolvida por uma quantidade massiva de mana (o receptáculo vai absorver essa mana e aumentar as curas)."
+        "desc":  "É um amuleto que se alimenta de magia. Quanto mais magia é enviado ao receptáculo, mais força ela entrega ao usuário. Curas são aumentadas em 100% quando envolvida por uma quantidade massiva de energia arcana (o receptáculo vai absorver essa energia arcana e aumentar as curas)."
     },
     {
         "id":  387,

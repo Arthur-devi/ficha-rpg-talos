@@ -360,8 +360,8 @@ export const EVOLUCOES = {
       { nivel: 6, desc: '3x descanso longo - 4d10 + magia' },
     ],
     'Teleporte': [
-      { nivel: 3, desc: '3 mana - ação bônus - até 6m' },
-      { nivel: 9, desc: '5 mana - pode ser reação - até 12m' },
+      { nivel: 3, desc: 'Ação bônus - até 6m' },
+      { nivel: 9, desc: 'Pode ser reação - até 12m' },
     ],
     '[Temporal] Retroceder': [
       { nivel: 5, desc: '1 alvo aliado ou inimigo' },
@@ -630,7 +630,7 @@ export const EVOLUCOES = {
       { nivel: 8, desc: 'Usos ilimitados — +1d10' },
       { nivel: 12, desc: 'Usos ilimitados — +1d12' },
     ],
-    'Fortificação de Mana': [
+    'Fortificação Arcana': [
       { nivel: 2, desc: '2x desc. curto — escudo 20 + mod cons — 2 turnos — imune a magias de nível inferior' },
       { nivel: 7, desc: '2x desc. curto — escudo 35 + mod cons — 3 turnos — imune até 3 níveis acima' },
       { nivel: 17, desc: '2x desc. curto — escudo 45 + mod cons — até fim do combate — imune a toda magia' },
