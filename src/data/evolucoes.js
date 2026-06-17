@@ -770,10 +770,10 @@ export const EVOLUCOES = {
       { nivel: 8, desc: '1x desc. curto | copia habilidade usada contra ele em versão sanguinolenta do nível do Hemomante' },
     ],
     '[Empírico] Mística Empírica (Passiva)': [
-      { nivel: 14, desc: 'Ataques desferidos ou dano recebido geram orbes. Fim do turno: orbes atacam automaticamente e causam dano físico igual aos Pontos de Acúmulo' },
+      { nivel: 14, desc: 'Ataques desferidos ou dano recebido geram orbes vermelhas em quantidade igual à metade dos danos causados. Fim do turno: orbes atacam automaticamente e causam dano físico igual aos Pontos de Acúmulo' },
     ],
     '[Guerra] Forja Hematúrgica': [
-      { nivel: 5, desc: '10 HP | cria armas de sangue puro. Espadas/machados/foice/katana: 2d8; arco e 10 flechas: 1d6; duas adagas: 2d4' },
+      { nivel: 5, desc: '10 HP | cria armas de sangue puro. Espadas/machados/foice/katana: 2d8; arco e 10 flechas: 1d6; duas adagas: 2d4; cajado e outras formas a critério do mestre' },
       { nivel: 5, desc: 'Golpes curam 50% do dano causado e adicionam mod constituição como dano mágico' },
       { nivel: 10, desc: '+2 dados de dano nas armas de sangue' },
       { nivel: 15, desc: '+2 dados de dano adicionais nas armas de sangue' },
@@ -783,10 +783,10 @@ export const EVOLUCOES = {
       { nivel: 5, desc: '5 HP | ação bônus | arma não mágica recebe dano mágico adicional igual ao mod constituição' },
     ],
     '[Guerra] Pódio': [
-      { nivel: 8, desc: '1x desc. longo | 20 HP | área 16×16m | proíbe habilidades mágicas e efeitos de itens mágicos por 3 turnos; armas de sangue são exceção' },
+      { nivel: 8, desc: '1x desc. longo | 20 HP | área 16×16m | proíbe habilidades mágicas e efeitos de itens mágicos por 3 turnos; armas de sangue são exceção; criaturas ficam presas no selo' },
     ],
     '[Guerra] Hemotese (Passiva)': [
-      { nivel: 8, desc: 'Transfusão Mágica pode ser usada em ataques físicos. A cura segue os dados da Transfusão' },
+      { nivel: 5, desc: 'Transfusão Mágica pode ser usada em ataques físicos. A cura segue os dados da Transfusão' },
     ],
     '[Guerra] Legião de Sangue': [
       { nivel: 14, desc: '1x desc. longo | 30 HP | +1 CA e +1 defesa por litro consumido, máximo +8 CA' },

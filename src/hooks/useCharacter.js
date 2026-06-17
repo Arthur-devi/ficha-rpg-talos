@@ -80,6 +80,7 @@ const defaultCharacter = {
       reservaSangue: 0,
       pontosAcumulo: 0,
       curasAcumuladas: 0,
+      litrosSangue: 0,
     },
   },
 
