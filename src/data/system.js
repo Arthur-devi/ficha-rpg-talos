@@ -18,16 +18,60 @@ export const TENDENCIAS = [
   'Leal e Mau (LM)', 'Neutro e Mau (NM)', 'Caótico e Mau (CM)',
 ];
 
-export const PROFISSOES = [
-  'Artesão', 'Artista', 'Assistente de Laboratório', 'Batedor', 'Soldado',
-  'Acrobata', 'Cavalariço', 'Ladrão', 'Historiador', 'Médico', 'Diplomata',
-  'Caçador de Tesouros', 'Místico', 'Amigo dos Animais', 'Amnésico', 'Acólito',
-  'Trabalhador', 'Taverneiro', 'Selvagem', 'Seguidor', 'Refugiado', 'Pivete',
-  'Charlatão', 'Circense', 'Criminoso', 'Curandeiro', 'Eremita', 'Escravo',
-  'Estudioso', 'Fazendeiro', 'Forasteiro', 'Gladiador', 'Guarda', 'Herdeiro',
-  'Herói Camponês', 'Marujo', 'Mateiro', 'Membro de Guilda', 'Mercador',
-  'Minerador', 'Nômade',
+const PROFISSOES_BASE = [
+  { name: 'Artesão', pericias: ['Ofício'], texto: 'Escolha até 3 Ofícios (Administração, Alquimia, Alvenaria, Armas de Cerco, Carpintaria, Joalheria, Metalurgia, Arte, Profissão)', nota: 'Escolha as especialidades de Ofício com o mestre.' },
+  { name: 'Artista', pericias: ['Atuação', 'Enganação'], texto: 'Atuação, Enganação' },
+  { name: 'Assistente de Laboratório', pericias: ['Ofício', 'Misticismo'], texto: 'Ofício (alquimia), Misticismo' },
+  { name: 'Batedor', pericias: ['Furtividade', 'Percepção', 'Sobrevivência'], texto: 'Furtividade, Percepção, Sobrevivência' },
+  { name: 'Soldado', pericias: ['Atletismo', 'Luta', 'Pilotagem'], texto: 'Atletismo, Luta, Pilotagem' },
+  { name: 'Acrobata', pericias: ['Acrobacia', 'Prestidigitação', 'Furtividade'], texto: 'Acrobacia, Prestidigitação, Furtividade' },
+  { name: 'Cavalariço', pericias: ['Cavalgar', 'Reflexos'], texto: 'Cavalgar, Reflexos' },
+  { name: 'Ladrão', pericias: ['Ladinagem', 'Investigação', 'Pontaria'], texto: 'Ladinagem, Investigação, Pontaria' },
+  { name: 'Historiador', pericias: ['História', 'Geografia', 'Natureza', 'Religião'], texto: 'História, Geografia, Natureza, Religião' },
+  { name: 'Médico', pericias: ['Vontade', 'Cura', 'Sobrevivência', 'Fortitude'], texto: 'Vontade, Cura, Sobrevivência, Fortitude' },
+  { name: 'Diplomata', pericias: ['Intimidação', 'Atuação', 'Persuasão', 'Diplomacia'], texto: 'Intimidação, Atuação (escolha uma), Persuasão, Diplomacia', nota: 'Escolha uma variação de Atuação.' },
+  { name: 'Caçador de Tesouros', pericias: ['Tesouros', 'Procurar', 'Jogatina'], texto: 'Tesouros, Procurar, Jogatina' },
+  { name: 'Místico', pericias: ['Arcano', 'Guia', 'Mitologia Arcana'], texto: 'Arcano, Guia, Mitologia Arcana' },
+  { name: 'Amigo dos Animais', pericias: ['Adestramento', 'Cavalgar'], texto: 'Adestramento, Cavalgar' },
+  { name: 'Amnésico', pericias: [], texto: 'Escolha conforme passado revelado', nota: 'Sem perícia fixa até o passado ser revelado.' },
+  { name: 'Acólito', pericias: ['Cura', 'Religião', 'Vontade'], texto: 'Cura, Religião, Vontade' },
+  { name: 'Trabalhador', pericias: ['Atletismo', 'Fortitude'], texto: 'Atletismo, Fortitude' },
+  { name: 'Taverneiro', pericias: ['Diplomacia', 'Jogatina', 'Ofício'], texto: 'Diplomacia, Jogatina, Ofício (culinária)', nota: 'Ofício representa culinária.' },
+  { name: 'Selvagem', pericias: ['Percepção', 'Reflexos', 'Natureza', 'Sobrevivência'], texto: 'Percepção, Reflexos, Natureza, Sobrevivência' },
+  { name: 'Seguidor', pericias: ['Adestramento', 'Ofício'], texto: 'Adestramento, Ofício (qualquer)', nota: 'Escolha a especialidade de Ofício.' },
+  { name: 'Refugiado', pericias: ['Fortitude', 'Reflexos', 'Vontade'], texto: 'Fortitude, Reflexos, Vontade' },
+  { name: 'Pivete', pericias: ['Furtividade', 'Iniciativa', 'Ladinagem'], texto: 'Furtividade, Iniciativa, Ladinagem' },
+  { name: 'Charlatão', pericias: ['Enganação', 'Jogatina'], texto: 'Enganação, Jogatina' },
+  { name: 'Circense', pericias: ['Acrobacia', 'Atuação', 'Procurar', 'Reflexos'], texto: 'Acrobacia, Atuação, Procurar, Reflexos' },
+  { name: 'Criminoso', pericias: ['Enganação', 'Furtividade', 'Tesouros', 'Ladinagem'], texto: 'Enganação, Furtividade, Tesouros, Ladinagem' },
+  { name: 'Curandeiro', pericias: ['Cura', 'Vontade'], texto: 'Cura, Vontade' },
+  { name: 'Eremita', pericias: ['Misticismo', 'Religião', 'Sobrevivência'], texto: 'Misticismo, Religião, Sobrevivência' },
+  { name: 'Escravo', pericias: ['Atletismo', 'Fortitude', 'Furtividade', 'Vontade'], texto: 'Atletismo, Fortitude, Furtividade, Vontade' },
+  { name: 'Estudioso', pericias: ['História', 'Guerra', 'Arcano', 'Procurar'], texto: 'História, Guerra, Arcano, Procurar' },
+  { name: 'Fazendeiro', pericias: ['Adestramento', 'Cavalgar', 'Ofício', 'Sobrevivência'], texto: 'Adestramento, Cavalgar, Ofício (fazendeiro), Sobrevivência', nota: 'Ofício representa fazendeiro.' },
+  { name: 'Forasteiro', pericias: ['Cavalgar', 'Pilotagem', 'Sobrevivência'], texto: 'Cavalgar, Pilotagem, Sobrevivência' },
+  { name: 'Gladiador', pericias: ['Atuação', 'Luta'], texto: 'Atuação, Luta' },
+  { name: 'Guarda', pericias: ['Investigação', 'Luta', 'Percepção'], texto: 'Investigação, Luta, Percepção' },
+  { name: 'Herdeiro', pericias: ['Misticismo', 'Nobreza', 'Ofício'], texto: 'Misticismo, Nobreza, Ofício (qualquer)', nota: 'Escolha a especialidade de Ofício.' },
+  { name: 'Herói Camponês', pericias: ['Adestramento', 'Ofício'], texto: 'Adestramento, Ofício (qualquer)', nota: 'Escolha a especialidade de Ofício.' },
+  { name: 'Marujo', pericias: ['Atletismo', 'Jogatina', 'Ofício', 'Pilotagem'], texto: 'Atletismo, Jogatina, Ofício (marinheiro), Pilotagem', nota: 'Ofício representa marinheiro.' },
+  { name: 'Mateiro', pericias: ['Atletismo', 'Furtividade', 'Sobrevivência'], texto: 'Atletismo, Furtividade, Sobrevivência' },
+  { name: 'Membro de Guilda', pericias: ['Diplomacia', 'Enganação', 'Misticismo', 'Ofício'], texto: 'Diplomacia, Enganação, Misticismo, Ofício (qualquer)', nota: 'Escolha a especialidade de Ofício.' },
+  { name: 'Mercador', pericias: ['Diplomacia', 'Intuição', 'Ofício'], texto: 'Diplomacia, Intuição, Ofício (qualquer)', nota: 'Escolha a especialidade de Ofício.' },
+  { name: 'Minerador', pericias: ['Atletismo', 'Fortitude', 'Ofício'], texto: 'Atletismo, Fortitude, Ofício (minerador)', nota: 'Ofício representa minerador.' },
+  { name: 'Nômade', pericias: ['Cavalgar', 'Pilotagem', 'Sobrevivência'], texto: 'Cavalgar, Pilotagem, Sobrevivência' },
 ];
+
+export const PROFISSOES_DATA = PROFISSOES_BASE.map(profissao => ({
+  ...profissao,
+  desc: `Antes de se tornar aventureiro, o personagem viveu como ${profissao.name}. Essa profissão define sua vivência inicial e concede as perícias profissionais listadas no sistema TALOS.`,
+}));
+
+export const PROFISSOES = PROFISSOES_DATA.map(profissao => profissao.name);
+
+export function getProfissaoData(name) {
+  return PROFISSOES_DATA.find(profissao => profissao.name === name);
+}
 
 export const ORIGENS = [
   {
@@ -550,13 +594,13 @@ export const SHIKATAS = [
 
 export const PERICIAS_BY_ATTR = {
   forca: ['Atletismo', 'Luta', 'Pilotagem'],
-  destreza: ['Acrobacia', 'Prestidigitação', 'Furtividade', 'Cavalgar', 'Reflexos', 'Ladinagem', 'Investigação', 'Pontaria'],
+  destreza: ['Acrobacia', 'Prestidigitação', 'Furtividade', 'Cavalgar', 'Reflexos', 'Iniciativa', 'Ladinagem', 'Investigação', 'Pontaria'],
   inteligencia: ['História', 'Geografia', 'Natureza', 'Religião', 'Guerra', 'Nobreza', 'Ofício'],
   constituicao: ['Vontade', 'Cura', 'Sobrevivência', 'Fortitude'],
   carisma: ['Intimidação', 'Atuação', 'Persuasão', 'Adestramento', 'Diplomacia', 'Enganação'],
-  percepcao: ['Intuição'],
+  percepcao: ['Percepção', 'Intuição'],
   sorte: ['Tesouros', 'Procurar', 'Jogatina'],
-  magia: ['Arcano', 'Guia', 'Mitologia Arcana'],
+  magia: ['Arcano', 'Misticismo', 'Guia', 'Mitologia Arcana'],
 };
 
 export const ESTADOS = [

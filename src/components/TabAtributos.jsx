@@ -1,4 +1,4 @@
-import { ATTRIBUTES, PERICIAS_BY_ATTR, ESTADOS } from '../data/system';
+import { ATTRIBUTES, PERICIAS_BY_ATTR, ESTADOS, getProfissaoData } from '../data/system';
 
 function signed(value) {
   return value > 0 ? `+${value}` : `${value || 0}`;
@@ -50,6 +50,8 @@ export default function TabAtributos({ char, update, updateAttr, derived, toggle
   const hpPct = Math.max(0, Math.min(100, (char.hpAtual / hpMaxTotal) * 100));
   const lockedDeslocamento = derived.originDeslocamentoBase + derived.deslocamentoBonus + derived.deslocamentoItemBonus;
   const lockedLimiteCansaco = derived.originLimiteCansacoBase + derived.limiteCansacoBonus;
+  const profissaoData = getProfissaoData(char.profissao);
+  const periciasProfissao = new Set(profissaoData?.pericias || []);
 
   return (
     <div className="stack">
@@ -216,12 +218,24 @@ export default function TabAtributos({ char, update, updateAttr, derived, toggle
                   <div style={{ fontFamily: 'var(--font-heading)', fontSize: '0.68rem', color: 'var(--ink-light)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4, borderBottom: '1px solid var(--parch-300)', paddingBottom: 3 }}>
                     {attr?.label}
                   </div>
-                  {pericias.map(p => (
-                    <label key={p} className="pericia-item">
-                      <input type="checkbox" checked={char.pericias.includes(p)} onChange={() => togglePericia(p)} />
-                      <span style={{ fontSize: '0.85rem' }}>{p}</span>
-                    </label>
-                  ))}
+                  {pericias.map(p => {
+                    const lockedByProfession = periciasProfissao.has(p);
+                    const checked = lockedByProfession || char.pericias.includes(p);
+                    return (
+                      <label key={p} className={`pericia-item ${lockedByProfession ? 'locked' : ''}`} title={lockedByProfession ? `Perícia fixa da profissão: ${profissaoData.name}` : undefined}>
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          disabled={lockedByProfession}
+                          onChange={() => {
+                            if (!lockedByProfession) togglePericia(p);
+                          }}
+                        />
+                        <span style={{ fontSize: '0.85rem' }}>{p}</span>
+                        {lockedByProfession && <span className="pericia-locked-tag">Profissão</span>}
+                      </label>
+                    );
+                  })}
                 </div>
               );
             })}

@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import itemsRaw from '../data/items_raw.json';
-import { ORIGENS } from '../data/system';
+import { ORIGENS, getProfissaoData } from '../data/system';
 import { ITEM_ATTRIBUTE_KEYS, aggregateItemEffects } from '../data/itemEffects';
 import { getOriginEffects } from '../data/originEffects';
 
@@ -210,6 +210,8 @@ export function useCharacter() {
 
   const togglePericia = useCallback((pericia) => {
     setChar(prev => {
+      const periciasProfissao = getProfissaoData(prev.profissao)?.pericias || [];
+      if (periciasProfissao.includes(pericia)) return prev;
       const has = prev.pericias.includes(pericia);
       const next = { ...prev, pericias: has ? prev.pericias.filter(p => p !== pericia) : [...prev.pericias, pericia] };
       try { localStorage.setItem('talos_char_draft', JSON.stringify(next)); } catch {

@@ -1,8 +1,9 @@
-import { ORIGENS, SHIKATAS, PROFISSOES, TENDENCIAS } from '../data/system';
+import { ORIGENS, SHIKATAS, PROFISSOES, TENDENCIAS, getProfissaoData } from '../data/system';
 
 export default function TabIdentidade({ char, update }) {
   const origemData = ORIGENS.find(o => o.id === char.origem);
   const shikataData = SHIKATAS.find(s => s.id === char.shikata);
+  const profissaoData = getProfissaoData(char.profissao);
   const handleOrigemChange = (value) => {
     update('origem', value);
     update('deslocamento', 0);
@@ -50,6 +51,36 @@ export default function TabIdentidade({ char, update }) {
               </select>
             </div>
           </div>
+
+          {profissaoData && (
+            <div style={{ marginTop: 12, padding: '10px 14px', background: 'rgba(253,246,227,0.55)', border: '1px solid var(--parch-300)', borderRadius: 'var(--radius-md)' }}>
+              <div style={{ fontFamily: 'var(--font-heading)', fontSize: '0.72rem', color: 'var(--ink-light)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
+                Profissão escolhida
+              </div>
+              <p style={{ fontSize: '0.85rem', fontStyle: 'italic', color: 'var(--ink-mid)', lineHeight: 1.5, marginBottom: 8 }}>
+                {profissaoData.desc}
+              </p>
+              <div style={{ fontSize: '0.78rem', color: 'var(--ink-light)', fontFamily: 'var(--font-heading)', lineHeight: 1.45, marginBottom: 8 }}>
+                Perícias: {profissaoData.texto}
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: profissaoData.nota ? 8 : 0 }}>
+                {(profissaoData.pericias || []).length > 0 ? profissaoData.pericias.map(pericia => (
+                  <span key={pericia} className="badge" style={{ background: '#f8fafc', borderColor: 'var(--parch-400)', color: 'var(--ink-mid)' }}>
+                    {pericia}
+                  </span>
+                )) : (
+                  <span className="badge" style={{ background: 'transparent', borderColor: 'var(--parch-400)', color: 'var(--ink-faded)' }}>
+                    Sem perícia fixa
+                  </span>
+                )}
+              </div>
+              {profissaoData.nota && (
+                <div style={{ fontSize: '0.78rem', color: 'var(--ink-faded)', fontFamily: 'var(--font-heading)', lineHeight: 1.45 }}>
+                  {profissaoData.nota}
+                </div>
+              )}
+            </div>
+          )}
 
           <div style={{ marginTop: 12 }} className="grid2">
             <div className="field">
