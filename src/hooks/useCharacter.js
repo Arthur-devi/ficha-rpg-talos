@@ -44,6 +44,8 @@ const defaultCharacter = {
   hpMax: 12,
   hpAtual: 12,
   hpTemp: 0,
+  hpLevelRolls: [],
+  diceHistory: [],
 
   // CA
   caBase: 8,
@@ -73,6 +75,11 @@ const defaultCharacter = {
       performance: 0,
       armasSonoras: 0,
       concertosSucesso: 0,
+    },
+    hemomante: {
+      reservaSangue: 0,
+      pontosAcumulo: 0,
+      curasAcumuladas: 0,
     },
   },
 
@@ -223,11 +230,17 @@ export function useCharacter() {
   const itemEffects = aggregateItemEffects(equippedItems);
   const originData = ORIGENS.find(origin => origin.id === char.origem);
   const originEffects = getOriginEffects(originData);
+  const classAttrBonuses = Object.fromEntries(ITEM_ATTRIBUTE_KEYS.map(key => [key, 0]));
+  if (char.shikata === 'hemomante') {
+    const maxReservaSangue = Math.max(0, (Number(char.nivel) || 1) * 4);
+    const reservaSangue = Math.min(maxReservaSangue, Number(char.classResources?.hemomante?.reservaSangue) || 0);
+    classAttrBonuses.defesa += Math.floor(reservaSangue / 2);
+  }
 
   const attrsTotal = Object.fromEntries(
     ITEM_ATTRIBUTE_KEYS.map(key => [
       key,
-      (char.attrs[key] || 0) + (originEffects.attrs[key] || 0) + (itemEffects.attrs[key] || 0),
+      (char.attrs[key] || 0) + (originEffects.attrs[key] || 0) + (itemEffects.attrs[key] || 0) + (classAttrBonuses[key] || 0),
     ])
   );
 
@@ -241,6 +254,15 @@ export function useCharacter() {
   const originLimiteCansacoBase = originData ? originEffects.limiteCansacoBase : DEFAULT_LIMITE_CANSACO_BASE;
   const manualDeslocamento = Number(char.deslocamento) || 0;
   const manualLimiteCansaco = Number(char.limiteCansaco) || 0;
+  const maxHpLevelRolls = Math.max(0, (Number(char.nivel) || 1) - 1);
+  const activeHpLevelRolls = Array.isArray(char.hpLevelRolls)
+    ? char.hpLevelRolls
+      .filter(roll => roll.shikataId === char.shikata)
+      .slice(0, maxHpLevelRolls)
+    : [];
+  const hpLevelRollBonus = activeHpLevelRolls.reduce((sum, roll) => sum + (Number(roll.total) || 0), 0);
+  const hpBase = 12 + getMod(attrsTotal.constituicao) + originEffects.hpMax + itemEffects.hpMax;
+  const hpMaxTotal = Math.max(1, (Number(char.hpMax) || 0) + hpLevelRollBonus);
 
   const derived = {
     modForca: getMod(attrsTotal.forca),
@@ -255,6 +277,7 @@ export function useCharacter() {
     attrsTotal,
     originEffects,
     originAttrBonuses: originEffects.attrs,
+    classAttrBonuses,
     caOriginBonus: originEffects.ca,
     hpOriginBonus: originEffects.hpMax,
     itemEffects,
@@ -266,6 +289,9 @@ export function useCharacter() {
     originLimiteCansacoBase,
     manualDeslocamento,
     manualLimiteCansaco,
+    activeHpLevelRolls,
+    hpLevelRollBonus,
+    hpMaxTotal,
     // Int -> Magia bonus: 2 INT = 1 Magia
     magiaFromInt,
     magiaTotal,
@@ -278,7 +304,7 @@ export function useCharacter() {
     // CA = 8 + mod DES (limit 4) + mod CON (limit 4)
     caTotal: 8 + Math.min(getMod(attrsTotal.destreza), 4) + Math.min(getMod(attrsTotal.constituicao), 4) + (Number(char.caBonus) || 0) + originEffects.ca + itemEffects.ca,
     // HP base = 12 + mod CON
-    hpBase: 12 + getMod(attrsTotal.constituicao) + originEffects.hpMax + itemEffects.hpMax,
+    hpBase,
   };
 
   return { char, update, updateAttr, exportChar, importChar, addInventoryItem, removeInventoryItem, equipItem, toggleEstado, togglePericia, derived };
@@ -290,12 +316,18 @@ function normalizeCharacter(data = {}) {
     ...data,
     attrs: { ...defaultCharacter.attrs, ...(data.attrs || {}) },
     moedas: { ...defaultCharacter.moedas, ...(data.moedas || {}) },
+    hpLevelRolls: Array.isArray(data.hpLevelRolls) ? data.hpLevelRolls : [],
+    diceHistory: Array.isArray(data.diceHistory) ? data.diceHistory : [],
     classResources: {
       ...defaultCharacter.classResources,
       ...(data.classResources || {}),
       bardo: {
         ...defaultCharacter.classResources.bardo,
         ...(data.classResources?.bardo || {}),
+      },
+      hemomante: {
+        ...defaultCharacter.classResources.hemomante,
+        ...(data.classResources?.hemomante || {}),
       },
     },
   };

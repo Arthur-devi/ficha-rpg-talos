@@ -4,7 +4,7 @@ function signed(value) {
   return value > 0 ? `+${value}` : `${value || 0}`;
 }
 
-function AttrBox({ attr, value, mod, onChange, minValue = -10, originBonus = 0, itemBonus = 0 }) {
+function AttrBox({ attr, value, mod, onChange, minValue = -10, originBonus = 0, itemBonus = 0, classBonus = 0 }) {
   const isMagia = attr.key === 'magia';
   return (
     <div className="attr-box" style={isMagia ? { background: 'rgba(29,78,216,0.04)', borderColor: 'rgba(29,78,216,0.25)' } : {}}>
@@ -36,12 +36,18 @@ function AttrBox({ attr, value, mod, onChange, minValue = -10, originBonus = 0, 
           {itemBonus > 0 ? '+' : ''}{itemBonus} item
         </div>
       )}
+      {classBonus !== 0 && (
+        <div style={{ fontSize: '0.58rem', color: '#7c2d12', marginTop: 3, fontFamily: 'var(--font-heading)', lineHeight: 1.1 }}>
+          {classBonus > 0 ? '+' : ''}{classBonus} classe
+        </div>
+      )}
     </div>
   );
 }
 
 export default function TabAtributos({ char, update, updateAttr, derived, toggleEstado, togglePericia }) {
-  const hpPct = Math.max(0, Math.min(100, (char.hpAtual / char.hpMax) * 100));
+  const hpMaxTotal = derived.hpMaxTotal || char.hpMax;
+  const hpPct = Math.max(0, Math.min(100, (char.hpAtual / hpMaxTotal) * 100));
   const lockedDeslocamento = derived.originDeslocamentoBase + derived.deslocamentoBonus + derived.deslocamentoItemBonus;
   const lockedLimiteCansaco = derived.originLimiteCansacoBase + derived.limiteCansacoBonus;
 
@@ -56,12 +62,12 @@ export default function TabAtributos({ char, update, updateAttr, derived, toggle
             <div>
               <label>Pontos de Vida (HP)</label>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6 }}>
-                <input type="number" value={char.hpAtual} min={-999} max={char.hpMax}
+                <input type="number" value={char.hpAtual} min={-999} max={hpMaxTotal}
                   onChange={e => update('hpAtual', Number(e.target.value))}
                   style={{ width: 70, textAlign: 'center', fontFamily: 'var(--font-heading)', fontSize: '1.4rem', fontWeight: 600 }} />
                 <span style={{ color: 'var(--ink-faded)' }}>/</span>
-                <input type="number" value={char.hpMax} min={1}
-                  onChange={e => update('hpMax', Number(e.target.value))}
+                <input type="number" value={hpMaxTotal} min={1 + derived.hpLevelRollBonus}
+                  onChange={e => update('hpMax', Math.max(1, Number(e.target.value) - derived.hpLevelRollBonus))}
                   style={{ width: 70, textAlign: 'center', fontFamily: 'var(--font-heading)', fontSize: '1.1rem' }} />
               </div>
               <div className="stat-bar-track">
@@ -74,7 +80,7 @@ export default function TabAtributos({ char, update, updateAttr, derived, toggle
                   style={{ width: 80 }} />
               </div>
               <div style={{ marginTop: 4, fontSize: '0.75rem', color: 'var(--ink-faded)', fontFamily: 'var(--font-heading)' }}>
-                Base: 12 + mod CON + origem {signed(derived.hpOriginBonus)} + itens {signed(derived.hpItemBonus)} = {derived.hpBase}
+                Base: 12 + mod CON + origem {signed(derived.hpOriginBonus)} + itens {signed(derived.hpItemBonus)} = {derived.hpBase} | níveis {signed(derived.hpLevelRollBonus)}
               </div>
             </div>
 
@@ -139,7 +145,8 @@ export default function TabAtributos({ char, update, updateAttr, derived, toggle
               const isMagia = attr.key === 'magia';
               const originBonus = derived.originAttrBonuses?.[attr.key] || 0;
               const itemBonus = derived.itemAttrBonuses?.[attr.key] || 0;
-              const attributeLockedBonus = originBonus + itemBonus;
+              const classBonus = derived.classAttrBonuses?.[attr.key] || 0;
+              const attributeLockedBonus = originBonus + itemBonus + classBonus;
               // Valor exibido = base + origem + itens. Magia ainda soma INT÷2.
               const displayValue = isMagia ? derived.magiaTotal : derived.attrsTotal[attr.key];
               const lockedBonus = isMagia ? derived.magiaFromInt + attributeLockedBonus : attributeLockedBonus;
@@ -162,6 +169,7 @@ export default function TabAtributos({ char, update, updateAttr, derived, toggle
                   minValue={isMagia ? lockedBonus : -10 + lockedBonus}
                   originBonus={originBonus}
                   itemBonus={itemBonus}
+                  classBonus={classBonus}
                 />
               );
             })}

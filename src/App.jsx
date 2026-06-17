@@ -8,7 +8,6 @@ import TabHabilidades from './components/TabHabilidades';
 import TabInventario from './components/TabInventario';
 import TabMagias from './components/TabMagias';
 import TabNotas from './components/TabNotas';
-import TabSistema from './components/TabSistema';
 import { ORIGENS, SHIKATAS } from './data/system';
 
 const TABS = [
@@ -18,7 +17,6 @@ const TABS = [
   { id: 'habilidades', label: 'Habilidades', icon: '⚔️' },
   { id: 'inventario', label: 'Inventário', icon: '🎒' },
   { id: 'magias', label: 'Poderes', icon: '✦' },
-  { id: 'sistema', label: 'Sistema', icon: '📚' },
   { id: 'notas', label: 'Notas', icon: '📝' },
 ];
 
@@ -27,7 +25,8 @@ export default function App() {
   const { char, update, updateAttr, exportChar, importChar, addInventoryItem, removeInventoryItem, equipItem, toggleEstado, togglePericia, derived } = useCharacter();
   const importRef = useRef();
 
-  const hpPct = char.hpMax > 0 ? Math.max(0, Math.min(100, (char.hpAtual / char.hpMax) * 100)) : 0;
+  const hpMaxTotal = derived.hpMaxTotal || char.hpMax;
+  const hpPct = hpMaxTotal > 0 ? Math.max(0, Math.min(100, (char.hpAtual / hpMaxTotal) * 100)) : 0;
   const hpColor = hpPct > 60 ? '#16a34a' : hpPct > 25 ? '#d97706' : '#dc2626';
 
   return (
@@ -51,7 +50,7 @@ export default function App() {
         {char.name && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 4, padding: '0 8px' }}>
             <div style={{ fontFamily: 'var(--font-heading)', fontSize: '0.72rem', color: 'var(--parch-300)', whiteSpace: 'nowrap', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis' }}>{char.name}</div>
-            <div style={{ fontSize: '0.68rem', fontFamily: 'var(--font-heading)', color: hpColor, whiteSpace: 'nowrap' }}>❤️ {char.hpAtual}/{char.hpMax}</div>
+            <div style={{ fontSize: '0.68rem', fontFamily: 'var(--font-heading)', color: hpColor, whiteSpace: 'nowrap' }}>❤️ {char.hpAtual}/{hpMaxTotal}</div>
           </div>
         )}
 
@@ -82,11 +81,10 @@ export default function App() {
 
         {activeTab === 'identidade' && <TabIdentidade char={char} update={update} />}
         {activeTab === 'atributos' && <TabAtributos char={char} update={update} updateAttr={updateAttr} derived={derived} toggleEstado={toggleEstado} togglePericia={togglePericia} />}
-        {activeTab === 'dados' && <TabDados />}
+        {activeTab === 'dados' && <TabDados char={char} update={update} derived={derived} />}
         {activeTab === 'habilidades' && <TabHabilidades char={char} update={update} />}
         {activeTab === 'inventario' && <TabInventario char={char} derived={derived} addInventoryItem={addInventoryItem} removeInventoryItem={removeInventoryItem} equipItem={equipItem} />}
         {activeTab === 'magias' && <TabMagias char={char} update={update} />}
-        {activeTab === 'sistema' && <TabSistema />}
         {activeTab === 'notas' && <TabNotas char={char} update={update} />}
       </main>
 

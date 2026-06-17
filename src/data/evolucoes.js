@@ -702,47 +702,95 @@ export const EVOLUCOES = {
   },
 
   hemomante: {
+    'Reserva de Sangue (Passiva)': [
+      { nivel: 1, desc: 'Capacidade máxima: 4 ML por nível' },
+      { nivel: 1, desc: 'Metade da reserva soma como defesa durante combates' },
+      { nivel: 1, desc: 'Ao fim da batalha, toda reserva é sacrificada e cura 1 HP por ML' },
+    ],
     'Transfusão Mágica': [
-      { nivel: 1, desc: '1x por turno — 2d6 + mod magia — cura o dobro se tem sangue' },
-      { nivel: 5, desc: '2x por turno — 3d6 + mod magia' },
-      { nivel: 9, desc: '2x por turno — 4d6 + mod magia' },
-      { nivel: 14, desc: '2x por turno — 5d6 + mod magia' },
-      { nivel: 20, desc: '3x por turno — 8d8 + mod magia' },
+      { nivel: 1, desc: '1x por turno | 2d6 + mod magia | +1d6 por 2 ML' },
+      { nivel: 5, desc: '2x por turno | 3d6 + mod magia | +2d6 por 4 ML | ML anteriores indisponíveis' },
+      { nivel: 9, desc: '2x por turno | 4d6 + mod magia | +3d6 por 6 ML' },
+      { nivel: 14, desc: '2x por turno | 5d6 + mod magia | +4d8 por 8 ML' },
+      { nivel: 17, desc: 'ML extra: 3x por turno' },
+      { nivel: 20, desc: '3x por turno | 8d8 + mod magia | +5d8 por 10 ML' },
     ],
     'Cicatrização Sanguínea': [
-      { nivel: 2, desc: '1 HP por ML gasto (ação bônus)' },
-      { nivel: 6, desc: '2 HP por ML — regenera feridas leves, fecha feridas grandes' },
+      { nivel: 2, desc: '1 HP por ML gasto | ação bônus | cura não amplificada por outras fontes' },
+      { nivel: 6, desc: '2 HP por ML | regenera feridas leves e fecha feridas grandes' },
       { nivel: 20, desc: 'Regenera completamente membros perdidos' },
     ],
     'Sangue Enfeitiçado': [
-      { nivel: 2, desc: 'Custa 2 HP/fragmento — 1d6 por fragmento' },
-      { nivel: 5, desc: '2d6 por fragmento — maior bônus de acerto' },
+      { nivel: 2, desc: 'Custa 2 HP por fragmento | 1d6 por fragmento | +2 acerto por ML, máximo 6 | +2 dano acumulativo por acerto, máximo 4' },
+      { nivel: 5, desc: '2d6 por fragmento | +3 acerto por ML, máximo 6 | +3 dano acumulativo por acerto, máximo 6' },
     ],
     'Dança Escarlate': [
-      { nivel: 4, desc: '2x desc. curto — 10 HP — área 10m — 2d4 + magia (2º impacto: +3d4)' },
-      { nivel: 8, desc: '2x desc. curto — 18 HP — área 20m — 4d4 + magia (2º impacto: +6d4)' },
+      { nivel: 4, desc: '2x desc. curto | 10 HP | área 10m | 1º impacto: 2d4 + mod magia | 2º impacto em marcados: +3d4' },
+      { nivel: 8, desc: '2x desc. curto | 18 HP | área 20m | 1º impacto: 4d4 + mod magia | 2º impacto em marcados: +6d4' },
+    ],
+    'Risco Sangrento': [
+      { nivel: 6, desc: '1x desc. longo | 8 HP | sacrifica modificadores exceto MAG/CON e aumenta cura pela soma sacrificada' },
+    ],
+    'Catástrofe Efluviante (Passiva)': [
+      { nivel: 7, desc: 'Alvo morto por hemomancia explode em sangue num raio de 5m, se possuir sangue' },
+    ],
+    'Visão Vermelha (Passiva)': [
+      { nivel: 7, desc: 'Sangue exposto até 5m revela fragilidade. Ataque imediato como reação, 1x por ferida' },
     ],
     'Manipulação Rubra': [
-      { nivel: 9, desc: '1x desc. curto — 15 HP — interrompe (atordoa 1t) ou acelera (hemorragia 3t)' },
-      { nivel: 13, desc: '1x desc. curto — 4d8 ou 4d10 + mod magia + cons' },
-      { nivel: 17, desc: '2x desc. curto — 6d8 ou 6d12 + mod magia + cons — 2 alvos — sem exaustão' },
+      { nivel: 9, desc: '1x desc. curto | 15 HP | interromper: 3d8+mod magia e atordoa 1 turno | acelerar: 3d10+mod magia e hemorragia 3 turnos | exaustão mental' },
+      { nivel: 13, desc: '1x desc. curto | interromper: 4d8+mod magia+CON | acelerar: 4d10+mod magia+CON' },
+      { nivel: 17, desc: '2x desc. curto | interromper: 6d8+mod magia+CON | acelerar: 6d12+mod magia+CON | controla 2 alvos | sem exaustão' },
+    ],
+    'Caminho Rubro (Passiva)': [
+      { nivel: 10, desc: 'Detecta marcados pela Dança Escarlate em 200m. 20 ML = +100m de raio' },
     ],
     'Lança Sanguinária': [
-      { nivel: 11, desc: '2x desc. longo — 18 HP — 10d4 + magia — 24 ML = 2ª lança' },
-      { nivel: 19, desc: '2x desc. longo — 10d6 + mod magia — 36 ML = 2 lanças extras' },
+      { nivel: 11, desc: '2x desc. longo | 18 HP | 10d4 + magia | hemorragia acumulativa por 2 turnos | 24 ML = 2ª lança' },
+      { nivel: 19, desc: '2x desc. longo | 10d6 + mod magia | 36 ML = cria 2 lanças extras' },
+    ],
+    'Escoamento da Dor': [
+      { nivel: 12, desc: '1x desc. longo | 20 HP | marcados recebem 5d8 + mod magia | reduz vida máxima permanentemente pela metade do dano anterior | cura 3d4 por alvo' },
+      { nivel: 12, desc: '20 ML: esfera explode em 8×8m e causa +5d6 + mod constituição' },
+    ],
+    'Vórtex Hemático': [
+      { nivel: 20, desc: '1x desc. longo | 20 HP | granizo de sangue causa 8d12 por granizo | alvo indiscriminado' },
     ],
     '[Empírico] Experiência (Passiva)': [
-      { nivel: 5, desc: 'Imunidade a efeitos negativos repetidos. +1 Ponto de Acúmulo por efeito' },
-      { nivel: 8, desc: 'Mesma habilidade acertada 2x: apenas metade do dano' },
+      { nivel: 5, desc: 'Imunidade permanente a efeito negativo já sofrido. +1 Ponto de Acúmulo por efeito negativo recebido ou ação nova realizada' },
+      { nivel: 8, desc: 'Habilidades iguais acertadas contra você causam apenas metade do dano' },
+    ],
+    '[Empírico] Renascimento Épico': [
+      { nivel: 5, desc: '1x desc. longo | ao chegar a 0 HP, ressuscita com 25% da vida máxima e uma ação completa imediata' },
+    ],
+    '[Empírico] Herança Sanguínea (Passiva)': [
+      { nivel: 8, desc: 'Cada cura recebida aumenta as próximas curas em +1, acumulando até o fim do combate' },
+    ],
+    '[Empírico] Empírico': [
+      { nivel: 8, desc: '1x desc. curto | copia habilidade usada contra ele em versão sanguinolenta do nível do Hemomante' },
+    ],
+    '[Empírico] Mística Empírica (Passiva)': [
+      { nivel: 14, desc: 'Ataques desferidos ou dano recebido geram orbes. Fim do turno: orbes atacam automaticamente e causam dano físico igual aos Pontos de Acúmulo' },
     ],
     '[Guerra] Forja Hematúrgica': [
-      { nivel: 5, desc: '10 HP — cria arma de sangue puro. +2 dados a cada 5 níveis' },
+      { nivel: 5, desc: '10 HP | cria armas de sangue puro. Espadas/machados/foice/katana: 2d8; arco e 10 flechas: 1d6; duas adagas: 2d4' },
+      { nivel: 5, desc: 'Golpes curam 50% do dano causado e adicionam mod constituição como dano mágico' },
+      { nivel: 10, desc: '+2 dados de dano nas armas de sangue' },
+      { nivel: 15, desc: '+2 dados de dano adicionais nas armas de sangue' },
+      { nivel: 20, desc: '+2 dados de dano adicionais nas armas de sangue' },
+    ],
+    '[Guerra] Lascas de Sangue': [
+      { nivel: 5, desc: '5 HP | ação bônus | arma não mágica recebe dano mágico adicional igual ao mod constituição' },
     ],
     '[Guerra] Pódio': [
-      { nivel: 8, desc: '1x desc. longo — 20 HP — área 16×16m — proíbe magias e itens mágicos por 3 turnos' },
+      { nivel: 8, desc: '1x desc. longo | 20 HP | área 16×16m | proíbe habilidades mágicas e efeitos de itens mágicos por 3 turnos; armas de sangue são exceção' },
+    ],
+    '[Guerra] Hemotese (Passiva)': [
+      { nivel: 8, desc: 'Transfusão Mágica pode ser usada em ataques físicos. A cura segue os dados da Transfusão' },
     ],
     '[Guerra] Legião de Sangue': [
-      { nivel: 14, desc: '1x desc. longo — 30 HP — +1 CA e +1 def por litro de sangue (máx 8 CA). >10L: +2 dados' },
+      { nivel: 14, desc: '1x desc. longo | 30 HP | +1 CA e +1 defesa por litro consumido, máximo +8 CA' },
+      { nivel: 14, desc: 'Acima de 10 litros: +2 dados de dano em todas as habilidades por litro. Dura o combate inteiro' },
     ],
   },
 

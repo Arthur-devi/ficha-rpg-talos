@@ -80,6 +80,55 @@ function BardoResources({ char, update }) {
   );
 }
 
+function HemomanteResources({ char, update }) {
+  const resources = char.classResources?.hemomante || {};
+  const setResource = (key, value) => update(`classResources.hemomante.${key}`, clampCounter(value));
+  const adjust = (key, delta) => setResource(key, (resources[key] || 0) + delta);
+  const maxReserva = Math.max(0, (Number(char.nivel) || 1) * 4);
+
+  const fields = [
+    { key: 'reservaSangue', label: 'Reserva ML', step: 5, max: maxReserva },
+    { key: 'pontosAcumulo', label: 'Pontos Acúmulo', step: 1 },
+    { key: 'curasAcumuladas', label: 'Curas +', step: 1 },
+  ];
+
+  return (
+    <div className="card">
+      <div className="card-header"><span>ML</span><h3>Recursos do Hemomante</h3></div>
+      <div className="card-body">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
+          {fields.map(field => {
+            const value = resources[field.key] || 0;
+            const nextValue = field.max ? Math.min(value, field.max) : value;
+            return (
+              <div key={field.key} style={{ border: '1px solid var(--parch-300)', borderRadius: 'var(--radius-md)', padding: 12, background: 'rgba(253,246,227,0.45)' }}>
+                <label>{field.label}</label>
+                <input
+                  type="number"
+                  min={0}
+                  max={field.max}
+                  value={nextValue}
+                  onChange={e => setResource(field.key, field.max ? Math.min(field.max, clampCounter(e.target.value)) : e.target.value)}
+                  style={{ textAlign: 'center', fontFamily: 'var(--font-heading)', fontSize: '1.2rem', marginBottom: 8 }}
+                />
+                <div style={{ display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap' }}>
+                  <button className="btn btn-secondary btn-sm" onClick={() => adjust(field.key, -field.step)}>-{field.step}</button>
+                  <button className="btn btn-secondary btn-sm" onClick={() => setResource(field.key, field.max ? Math.min(field.max, value + field.step) : value + field.step)}>+{field.step}</button>
+                </div>
+                {field.key === 'reservaSangue' && (
+                  <div style={{ marginTop: 6, fontSize: '0.72rem', color: 'var(--ink-faded)', fontFamily: 'var(--font-heading)', textAlign: 'center' }}>
+                    Máx {maxReserva} | Defesa +{Math.floor(nextValue / 2)}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function TabHabilidades({ char, update }) {
   const shikataData = SHIKATAS.find(s => s.id === char.shikata);
 
@@ -141,6 +190,7 @@ export default function TabHabilidades({ char, update }) {
       </div>
 
       {char.shikata === 'bardo' && <BardoResources char={char} update={update} />}
+      {char.shikata === 'hemomante' && <HemomanteResources char={char} update={update} />}
 
       {/* Unlocked abilities - grouped by level */}
       <div className="card">
