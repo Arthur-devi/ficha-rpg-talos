@@ -371,33 +371,71 @@ export const EVOLUCOES = {
   },
 
   bardo: {
-    'Batida Estrondante': [
-      { nivel: 2, desc: '1x desc. curto — 1d4 + mod car — alvo único' },
-      { nivel: 7, desc: '1x desc. curto — 3d4 + mod car' },
-      { nivel: 15, desc: '1x desc. curto — 5d6 + 2× mod car — área 2×2m' },
-      { nivel: 19, desc: '1x desc. curto — 10d4 + 2× mod car — área 3×3m — qualquer objeto' },
-    ],
-    'Horizonte de Eventos': [
-      { nivel: 3, desc: '1x desc. longo — efeito base 5 turnos' },
-      { nivel: 13, desc: '1x desc. longo — ao fim dos 5 turnos: 2ª onda, +3 mobilidade a todos' },
-    ],
-    'Caminho das Cordas': [
-      { nivel: 4, desc: '1x desc. longo — dura 5 turnos (15min)' },
-      { nivel: 13, desc: '2x desc. longo — dura 10 turnos (20min)' },
+    'Concerto': [
+      { nivel: 1, desc: 'DÓ dif.10 | RÉ dif.12 | MI dif.14 | FÁ dif.15 | SOL dif.16 | LÁ dif.17 | SI dif.18. Erro causa 1d4 de dano ao bardo' },
+      { nivel: 12, desc: 'Após sucesso, não erra concerto idêntico ou mais fácil' },
+      { nivel: 14, desc: 'Dificuldade inicial diminuída em 6' },
+      { nivel: 16, desc: 'Escala de dificuldade diminui em 1 adicional' },
+      { nivel: 18, desc: 'Após 3 concertos com sucesso: 1 concerto sem dificuldade, máximo 30 acordes' },
     ],
     'Performance (Recurso)': [
-      { nivel: 1, desc: 'Acúmulos normais' },
+      { nivel: 1, desc: 'Acúmulos normais ao usar habilidades. Recurso gasto em habilidades especiais' },
       { nivel: 12, desc: 'Acúmulos DOBRADOS' },
-      { nivel: 17, desc: 'Acúmulos não se esvaecem mais' },
+      { nivel: 17, desc: 'Acúmulos não se esvaem mais' },
       { nivel: 19, desc: 'Acúmulos TRIPLICADOS' },
     ],
+    'Batida Estrondante': [
+      { nivel: 2, desc: '1x desc. curto | 1d4 + mod carisma | alvo único' },
+      { nivel: 7, desc: '1x desc. curto | 3d4 + mod carisma | alvo único' },
+      { nivel: 15, desc: '1x desc. curto | 5d6 + 2× mod carisma | área 2×2m' },
+      { nivel: 19, desc: '1x desc. curto | 10d4 + 2× mod carisma | área 3×3m | qualquer objeto/arma' },
+    ],
+    'Horizonte de Eventos': [
+      { nivel: 3, desc: '1x desc. longo | área 5×5m | 5 turnos | aliados curam 1d8 + mod carisma; inimigos sofrem dano e -1 movimentação' },
+      { nivel: 13, desc: 'Ao fim dos 5 turnos: 2ª onda de luz e +3 movimentação a todos os afetados' },
+    ],
+    'Caminho das Cordas': [
+      { nivel: 4, desc: '1x desc. longo | dura 5 turnos ou 15 minutos' },
+      { nivel: 13, desc: '2x desc. longo | dura 10 turnos ou 20 minutos' },
+    ],
+    '[Artista] Acordes Ofensivos': [
+      { nivel: 5, desc: 'DÓ: +2 dano no 1º dano do turno' },
+      { nivel: 5, desc: 'RÉ: -1 defesa' },
+      { nivel: 5, desc: 'MI: +1 acerto, máximo 5' },
+      { nivel: 5, desc: 'FÁ: -1 CA, máximo 10' },
+      { nivel: 5, desc: 'SOL: +1 em todos os atributos' },
+      { nivel: 5, desc: 'LÁ: -2 movimentação' },
+      { nivel: 5, desc: 'SI: +2 movimentação' },
+    ],
+    '[Artista] Som Encantado Upgrade (Passiva)': [
+      { nivel: 5, desc: '10 Performance = 1 Arma Sonora arremessável, alcance 10×10m, dano = mod carisma' },
+    ],
     '[Artista] Sinfonia Mortal': [
-      { nivel: 8, desc: '30 Performance — 1x por turno — lâminas 5× mod car por alvo' },
-      { nivel: 14, desc: '50 Performance — sem limite por turno (1 uso por Arma Sonora)' },
+      { nivel: 8, desc: '30 Performance | sem ação | 1x por turno | lâminas em 3×3m, 5× mod carisma de dano' },
+      { nivel: 14, desc: '50 Performance | sem limite por turno, mas 1 uso por Arma Sonora criada' },
+    ],
+    '[Poeta] Acordes Defensivos': [
+      { nivel: 5, desc: 'DÓ: +1 defesa' },
+      { nivel: 5, desc: 'RÉ: -1 acerto inimigo, máximo 5' },
+      { nivel: 5, desc: 'MI: -2 movimentação' },
+      { nivel: 5, desc: 'FÁ: +2 movimentação' },
+      { nivel: 5, desc: 'SOL: +1 CA, máximo 5' },
+      { nivel: 5, desc: 'LÁ: 2d4 de escudo' },
+      { nivel: 5, desc: 'SI: 2d4 de cura' },
+    ],
+    '[Poeta] Som Encantado Upgrade (Passiva)': [
+      { nivel: 5, desc: 'Habilidades afetam equipamentos e estruturas, não apenas seres vivos' },
+    ],
+    '[Poeta] Lullaby': [
+      { nivel: 8, desc: 'Onda sonora empurra inimigos em 5×5m e puxa aliados, curando 5d6 + mod carisma' },
     ],
     '[Poeta] Coalescência': [
-      { nivel: 8, desc: '1 aliado — divide apenas o dano do aliado' },
-      { nivel: 14, desc: 'Divide dano de ambos — até 4 aliados' },
+      { nivel: 8, desc: '1 aliado | divide apenas o dano sofrido pelo aliado com o bardo' },
+      { nivel: 14, desc: 'Divide dano de ambos | até 4 aliados' },
+    ],
+    '[Poeta] Acorde da Alma': [
+      { nivel: 14, desc: '2 ações completas | objetos em 5×5m ganham vida até o fim do combate' },
+      { nivel: 14, desc: 'HP por raridade: Lixo 10, Comum 20, Raro 40, Épico 80, Lendário 160, Divino/Pacto 1313' },
     ],
   },
 

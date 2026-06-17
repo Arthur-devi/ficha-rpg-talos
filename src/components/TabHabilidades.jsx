@@ -1,6 +1,10 @@
 import { SHIKATAS, SHIKATAS_HABILIDADES, getHabilidadesPorNivel, getHabilidadesFuturas } from '../data/system';
 import { getEvolucao } from '../data/evolucoes';
 
+function clampCounter(value) {
+  return Math.max(0, Number(value) || 0);
+}
+
 function EvolucaoTable({ shikataId, nome, nivelAtual }) {
   const rows = getEvolucao(shikataId, nome);
   if (!rows || rows.length === 0) return null;
@@ -38,7 +42,45 @@ function EvolucaoTable({ shikataId, nome, nivelAtual }) {
   );
 }
 
-export default function TabHabilidades({ char }) {
+function BardoResources({ char, update }) {
+  const resources = char.classResources?.bardo || {};
+  const setResource = (key, value) => update(`classResources.bardo.${key}`, clampCounter(value));
+  const adjust = (key, delta) => setResource(key, (resources[key] || 0) + delta);
+
+  const fields = [
+    { key: 'performance', label: 'Performance', step: 10 },
+    { key: 'armasSonoras', label: 'Armas Sonoras', step: 1 },
+    { key: 'concertosSucesso', label: 'Concertos Seguidos', step: 1 },
+  ];
+
+  return (
+    <div className="card">
+      <div className="card-header"><span>♪</span><h3>Recursos do Bardo</h3></div>
+      <div className="card-body">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
+          {fields.map(field => (
+            <div key={field.key} style={{ border: '1px solid var(--parch-300)', borderRadius: 'var(--radius-md)', padding: 12, background: 'rgba(253,246,227,0.45)' }}>
+              <label>{field.label}</label>
+              <input
+                type="number"
+                min={0}
+                value={resources[field.key] || 0}
+                onChange={e => setResource(field.key, e.target.value)}
+                style={{ textAlign: 'center', fontFamily: 'var(--font-heading)', fontSize: '1.2rem', marginBottom: 8 }}
+              />
+              <div style={{ display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap' }}>
+                <button className="btn btn-secondary btn-sm" onClick={() => adjust(field.key, -field.step)}>-{field.step}</button>
+                <button className="btn btn-secondary btn-sm" onClick={() => adjust(field.key, field.step)}>+{field.step}</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function TabHabilidades({ char, update }) {
   const shikataData = SHIKATAS.find(s => s.id === char.shikata);
 
   if (!shikataData) {
@@ -69,7 +111,7 @@ export default function TabHabilidades({ char }) {
         </div>
         <div className="card-body">
           <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: '0.85rem', color: 'var(--ink-mid)', marginBottom: 10 }}>
-            <span>🎲 Dado de vida: <strong>{shikataData.dadoVida}</strong></span>
+            <span>🎲 Dado de vida pós nv.1: <strong>{shikataData.dadoVida}</strong></span>
             <span>📊 Mod. acerto: <strong>{shikataData.modificador}</strong></span>
             <span>⚡ Dificuldade: <strong>{shikataData.dificuldade}</strong></span>
             <span>💫 Poder: <strong>{shikataData.poder}</strong></span>
@@ -97,6 +139,8 @@ export default function TabHabilidades({ char }) {
           )}
         </div>
       </div>
+
+      {char.shikata === 'bardo' && <BardoResources char={char} update={update} />}
 
       {/* Unlocked abilities - grouped by level */}
       <div className="card">
@@ -231,7 +275,7 @@ export default function TabHabilidades({ char }) {
             <div style={{ fontFamily: 'var(--font-heading)', fontSize: '0.7rem', color: 'var(--ink-light)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>Regras de Evolução</div>
             <ul style={{ paddingLeft: 16, fontSize: '0.82rem', color: 'var(--ink-mid)', lineHeight: 1.7, listStyle: 'disc' }}>
               <li>Cada shikata recebe <strong>2 pontos de atributo</strong> por nível</li>
-              <li>Ao evoluir: role o <strong>dado de vida</strong> + mod CON da shikata</li>
+              <li>Ao evoluir: use o <strong>dado de vida pós nv.1</strong> indicado pela shikata</li>
               <li>Multiclasse: proficiente no novo atributo, mas não soma modificadores</li>
               <li>Só pode evoluir <strong>1 nível de shikata por vez</strong></li>
             </ul>

@@ -1,6 +1,12 @@
 import { useState, useCallback } from 'react';
 import itemsRaw from '../data/items_raw.json';
+import { ORIGENS } from '../data/system';
 import { ITEM_ATTRIBUTE_KEYS, aggregateItemEffects } from '../data/itemEffects';
+import { getOriginEffects } from '../data/originEffects';
+
+const CURRENT_RULES_VERSION = 2;
+const DEFAULT_DESLOCAMENTO_BASE = 2;
+const DEFAULT_LIMITE_CANSACO_BASE = 4;
 
 const defaultCharacter = {
   // Identity
@@ -44,11 +50,12 @@ const defaultCharacter = {
   caBonus: 0,
 
   // Other derived
-  deslocamento: 2,
-  limiteCansaco: 4,
+  deslocamento: 0,
+  limiteCansaco: 0,
   cansacoAtual: 0,
   xp: 0,
   inspiracao: 0,
+  talosRulesVersion: CURRENT_RULES_VERSION,
 
   // Perícias
   pericias: [],
@@ -59,6 +66,15 @@ const defaultCharacter = {
 
   // Active states
   estados: [],
+
+  // Class-specific trackers
+  classResources: {
+    bardo: {
+      performance: 0,
+      armasSonoras: 0,
+      concertosSucesso: 0,
+    },
+  },
 
   // Notes
   notas: '',
@@ -205,9 +221,14 @@ export function useCharacter() {
     .map(itemId => itemsRaw.find(item => item.id === itemId))
     .filter(Boolean);
   const itemEffects = aggregateItemEffects(equippedItems);
+  const originData = ORIGENS.find(origin => origin.id === char.origem);
+  const originEffects = getOriginEffects(originData);
 
   const attrsTotal = Object.fromEntries(
-    ITEM_ATTRIBUTE_KEYS.map(key => [key, (char.attrs[key] || 0) + (itemEffects.attrs[key] || 0)])
+    ITEM_ATTRIBUTE_KEYS.map(key => [
+      key,
+      (char.attrs[key] || 0) + (originEffects.attrs[key] || 0) + (itemEffects.attrs[key] || 0),
+    ])
   );
 
   // Total magia = base + bônus de itens + INT÷2 (conversão automática do sistema)
@@ -216,6 +237,10 @@ export function useCharacter() {
 
   const deslocamentoBonus = Math.floor(attrsTotal.destreza / 5);
   const limiteCansacoBonus = Math.floor(attrsTotal.constituicao / 2);
+  const originDeslocamentoBase = originData ? originEffects.deslocamentoBase : DEFAULT_DESLOCAMENTO_BASE;
+  const originLimiteCansacoBase = originData ? originEffects.limiteCansacoBase : DEFAULT_LIMITE_CANSACO_BASE;
+  const manualDeslocamento = Number(char.deslocamento) || 0;
+  const manualLimiteCansaco = Number(char.limiteCansaco) || 0;
 
   const derived = {
     modForca: getMod(attrsTotal.forca),
@@ -228,24 +253,32 @@ export function useCharacter() {
     modDef: getMod(attrsTotal.defesa),
     modSor: getMod(attrsTotal.sorte),
     attrsTotal,
+    originEffects,
+    originAttrBonuses: originEffects.attrs,
+    caOriginBonus: originEffects.ca,
+    hpOriginBonus: originEffects.hpMax,
     itemEffects,
     itemAttrBonuses: itemEffects.attrs,
     caItemBonus: itemEffects.ca,
     hpItemBonus: itemEffects.hpMax,
     deslocamentoItemBonus: itemEffects.deslocamento,
+    originDeslocamentoBase,
+    originLimiteCansacoBase,
+    manualDeslocamento,
+    manualLimiteCansaco,
     // Int -> Magia bonus: 2 INT = 1 Magia
     magiaFromInt,
     magiaTotal,
     // Destreza -> Deslocamento: 5 DES = +1
     deslocamentoBonus,
-    deslocamentoTotal: (char.deslocamento || 0) + deslocamentoBonus + itemEffects.deslocamento,
+    deslocamentoTotal: originDeslocamentoBase + manualDeslocamento + deslocamentoBonus + itemEffects.deslocamento,
     // CON -> Limite Cansaço: 2 CON = +1
     limiteCansacoBonus,
-    limiteCansacoTotal: (char.limiteCansaco || 0) + limiteCansacoBonus,
+    limiteCansacoTotal: originLimiteCansacoBase + manualLimiteCansaco + limiteCansacoBonus,
     // CA = 8 + mod DES (limit 4) + mod CON (limit 4)
-    caTotal: 8 + Math.min(getMod(attrsTotal.destreza), 4) + Math.min(getMod(attrsTotal.constituicao), 4) + char.caBonus + itemEffects.ca,
+    caTotal: 8 + Math.min(getMod(attrsTotal.destreza), 4) + Math.min(getMod(attrsTotal.constituicao), 4) + (Number(char.caBonus) || 0) + originEffects.ca + itemEffects.ca,
     // HP base = 12 + mod CON
-    hpBase: 12 + getMod(attrsTotal.constituicao) + itemEffects.hpMax,
+    hpBase: 12 + getMod(attrsTotal.constituicao) + originEffects.hpMax + itemEffects.hpMax,
   };
 
   return { char, update, updateAttr, exportChar, importChar, addInventoryItem, removeInventoryItem, equipItem, toggleEstado, togglePericia, derived };
@@ -257,7 +290,25 @@ function normalizeCharacter(data = {}) {
     ...data,
     attrs: { ...defaultCharacter.attrs, ...(data.attrs || {}) },
     moedas: { ...defaultCharacter.moedas, ...(data.moedas || {}) },
+    classResources: {
+      ...defaultCharacter.classResources,
+      ...(data.classResources || {}),
+      bardo: {
+        ...defaultCharacter.classResources.bardo,
+        ...(data.classResources?.bardo || {}),
+      },
+    },
   };
+
+  if ((data.talosRulesVersion || 0) < CURRENT_RULES_VERSION) {
+    const originData = ORIGENS.find(origin => origin.id === merged.origem);
+    const movementBase = originData?.deslocamento ?? DEFAULT_DESLOCAMENTO_BASE;
+    const fatigueBase = originData?.limiteCansaco ?? DEFAULT_LIMITE_CANSACO_BASE;
+
+    merged.deslocamento = Math.max(0, (Number(merged.deslocamento) || 0) - movementBase);
+    merged.limiteCansaco = Math.max(0, (Number(merged.limiteCansaco) || 0) - fatigueBase);
+    merged.talosRulesVersion = CURRENT_RULES_VERSION;
+  }
 
   for (const legacyField of ['ma' + 'naMax', 'ma' + 'naAtual']) {
     delete merged[legacyField];

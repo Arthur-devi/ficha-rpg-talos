@@ -3,6 +3,11 @@ import { ORIGENS, SHIKATAS, PROFISSOES, TENDENCIAS } from '../data/system';
 export default function TabIdentidade({ char, update }) {
   const origemData = ORIGENS.find(o => o.id === char.origem);
   const shikataData = SHIKATAS.find(s => s.id === char.shikata);
+  const handleOrigemChange = (value) => {
+    update('origem', value);
+    update('deslocamento', 0);
+    update('limiteCansaco', 0);
+  };
 
   return (
     <div className="stack">
@@ -68,7 +73,7 @@ export default function TabIdentidade({ char, update }) {
         <div className="card-body">
           <div className="field" style={{ marginBottom: 12 }}>
             <label>Origem</label>
-            <select value={char.origem} onChange={e => update('origem', e.target.value)}>
+            <select value={char.origem} onChange={e => handleOrigemChange(e.target.value)}>
               <option value="">Selecione sua origem...</option>
               {ORIGENS.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
             </select>
@@ -130,7 +135,7 @@ export default function TabIdentidade({ char, update }) {
           {shikataData && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: '0.82rem', color: 'var(--ink-mid)' }}>
-                <span>🎲 Dado de vida: <strong>{shikataData.dadoVida}+mod CON</strong></span>
+                <span>🎲 Dado de vida pós nv.1: <strong>{shikataData.dadoVida}</strong></span>
                 <span>📊 Modificador: <strong>{shikataData.modificador}</strong></span>
                 <span>⚡ Dificuldade: <strong>{shikataData.dificuldade}</strong></span>
               </div>

@@ -3,6 +3,7 @@ import './styles/global.css';
 import { useCharacter } from './hooks/useCharacter';
 import TabIdentidade from './components/TabIdentidade';
 import TabAtributos from './components/TabAtributos';
+import TabDados from './components/TabDados';
 import TabHabilidades from './components/TabHabilidades';
 import TabInventario from './components/TabInventario';
 import TabMagias from './components/TabMagias';
@@ -13,6 +14,7 @@ import { ORIGENS, SHIKATAS } from './data/system';
 const TABS = [
   { id: 'identidade', label: 'Identidade', icon: '📜' },
   { id: 'atributos', label: 'Atributos', icon: '💪' },
+  { id: 'dados', label: 'Dados', icon: 'D20' },
   { id: 'habilidades', label: 'Habilidades', icon: '⚔️' },
   { id: 'inventario', label: 'Inventário', icon: '🎒' },
   { id: 'magias', label: 'Poderes', icon: '✦' },
@@ -80,6 +82,7 @@ export default function App() {
 
         {activeTab === 'identidade' && <TabIdentidade char={char} update={update} />}
         {activeTab === 'atributos' && <TabAtributos char={char} update={update} updateAttr={updateAttr} derived={derived} toggleEstado={toggleEstado} togglePericia={togglePericia} />}
+        {activeTab === 'dados' && <TabDados />}
         {activeTab === 'habilidades' && <TabHabilidades char={char} update={update} />}
         {activeTab === 'inventario' && <TabInventario char={char} derived={derived} addInventoryItem={addInventoryItem} removeInventoryItem={removeInventoryItem} equipItem={equipItem} />}
         {activeTab === 'magias' && <TabMagias char={char} update={update} />}
