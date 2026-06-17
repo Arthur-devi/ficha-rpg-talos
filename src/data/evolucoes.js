@@ -355,6 +355,10 @@ export const EVOLUCOES = {
       { nivel: 7, desc: '2d10 + magia - 2 turnos - congela uma parte inteira' },
       { nivel: 12, desc: '3d10 + magia - 3 turnos - congela o corpo inteiro' },
     ],
+    'Controle de Terreno': [
+      { nivel: 1, desc: 'Prende 1 alvo por 2 turnos em rochas sólidas com 15 HP' },
+      { nivel: 9, desc: 'Com domínio de terra: prende por 3 turnos em rochas com 30 HP' },
+    ],
     'Repreensão Pactual': [
       { nivel: 2, desc: '2x descanso longo - 2d10 + magia' },
       { nivel: 6, desc: '3x descanso longo - 4d10 + magia' },
@@ -372,69 +376,61 @@ export const EVOLUCOES = {
 
   bardo: {
     'Concerto': [
-      { nivel: 1, desc: 'DÓ dif.10 | RÉ dif.12 | MI dif.14 | FÁ dif.15 | SOL dif.16 | LÁ dif.17 | SI dif.18. Erro causa 1d4 de dano ao bardo' },
-      { nivel: 12, desc: 'Após sucesso, não erra concerto idêntico ou mais fácil' },
-      { nivel: 14, desc: 'Dificuldade inicial diminuída em 6' },
-      { nivel: 16, desc: 'Escala de dificuldade diminui em 1 adicional' },
-      { nivel: 18, desc: 'Após 3 concertos com sucesso: 1 concerto sem dificuldade, máximo 30 acordes' },
+      { nivel: 1, desc: 'Efeitos padrões. Se tocar mais de 1 acorde: d20, dificuldade inicial 12; +3 para cada acorde adicional após o segundo' },
+      { nivel: 4, desc: 'Reduz dificuldade em 1. DÓ passa de 1d2 para 1d6; LÁ/SI passam de 1d4 para 1d8; CA recebida aumenta em +1' },
+      { nivel: 7, desc: 'Reduz dificuldade em 1. Efeitos de 1d6/1d8 passam para 2d8; diminui a CA de inimigos em -1' },
+      { nivel: 9, desc: 'Reduz dificuldade em 3' },
+      { nivel: 12, desc: 'Após sucesso, não erra concerto idêntico ou mais fácil no combate. Efeitos de 2d8 passam para 2d12' },
+      { nivel: 14, desc: 'Dificuldade inicial diminuída em 3' },
+      { nivel: 16, desc: 'Escala de dificuldade diminui em 1 adicional. Efeitos de 2d12 passam para 3d12' },
+      { nivel: 18, desc: 'Após 3 concertos com sucesso: 1 concerto sem dificuldade' },
     ],
     'Performance (Recurso)': [
-      { nivel: 1, desc: 'Acúmulos normais ao usar habilidades. Recurso gasto em habilidades especiais' },
-      { nivel: 12, desc: 'Acúmulos DOBRADOS' },
-      { nivel: 17, desc: 'Acúmulos não se esvaem mais' },
-      { nivel: 19, desc: 'Acúmulos TRIPLICADOS' },
+      { nivel: 1, desc: 'Testes de destreza durante Concerto geram Performance igual à dificuldade vencida. Máximo: 10 + mod carisma; desvanece no fim do dia' },
+      { nivel: 5, desc: 'Máximo: 20 + mod carisma' },
+      { nivel: 8, desc: 'Máximo: 30 + mod carisma' },
+      { nivel: 12, desc: 'Performance recebida DOBRADA' },
+      { nivel: 17, desc: 'Performance não se esvai mais. Máximo: 40 + mod carisma' },
+      { nivel: 19, desc: 'Performance gerada TRIPLICADA' },
     ],
     'Batida Estrondante': [
-      { nivel: 2, desc: '1x desc. curto | 1d4 + mod carisma | alvo único' },
-      { nivel: 7, desc: '1x desc. curto | 3d4 + mod carisma | alvo único' },
-      { nivel: 15, desc: '1x desc. curto | 5d6 + 2× mod carisma | área 2×2m' },
-      { nivel: 19, desc: '1x desc. curto | 10d4 + 2× mod carisma | área 3×3m | qualquer objeto/arma' },
+      { nivel: 2, desc: '3 Performance | 2d6 + mod carisma | alvo único' },
+      { nivel: 5, desc: '3 Performance | 3d6 + mod carisma | alvo único' },
+      { nivel: 7, desc: '3 Performance | 4d6 + mod carisma | alvo único' },
+      { nivel: 15, desc: '3 Performance | 5d6 + 2× mod carisma | área 2×2m' },
+      { nivel: 19, desc: '3 Performance | 7d6 + 2× mod carisma | área 3×3m | qualquer objeto/arma' },
     ],
     'Horizonte de Eventos': [
-      { nivel: 3, desc: '1x desc. longo | área 5×5m | 5 turnos | aliados curam 1d8 + mod carisma; inimigos sofrem dano e -1 movimentação' },
-      { nivel: 13, desc: 'Ao fim dos 5 turnos: 2ª onda de luz e +3 movimentação a todos os afetados' },
+      { nivel: 3, desc: '15 Performance | área 5×5m | repete por 5 turnos | aliados curam 1d8 + mod carisma; inimigos sofrem 1d8 + carisma e -1 deslocamento' },
+      { nivel: 7, desc: 'Cura aumenta para 3d8 + mod carisma; dano aumenta para 2d8 + mod carisma' },
+      { nivel: 13, desc: 'Ao fim dos 5 turnos: 2ª onda de luz e +3 deslocamento a todos os afetados' },
     ],
     'Caminho das Cordas': [
-      { nivel: 4, desc: '1x desc. longo | dura 5 turnos ou 15 minutos' },
-      { nivel: 13, desc: '2x desc. longo | dura 10 turnos ou 20 minutos' },
-    ],
-    '[Artista] Acordes Ofensivos': [
-      { nivel: 5, desc: 'DÓ: +2 dano no 1º dano do turno' },
-      { nivel: 5, desc: 'RÉ: -1 defesa' },
-      { nivel: 5, desc: 'MI: +1 acerto, máximo 5' },
-      { nivel: 5, desc: 'FÁ: -1 CA, máximo 10' },
-      { nivel: 5, desc: 'SOL: +1 em todos os atributos' },
-      { nivel: 5, desc: 'LÁ: -2 movimentação' },
-      { nivel: 5, desc: 'SI: +2 movimentação' },
+      { nivel: 4, desc: '1x desc. longo | 10 Performance | dura 5 turnos ou 15 minutos' },
+      { nivel: 13, desc: '2x desc. longo | 10 Performance | dura 10 turnos ou 20 minutos' },
     ],
     '[Artista] Som Encantado Upgrade (Passiva)': [
       { nivel: 5, desc: '10 Performance = 1 Arma Sonora arremessável, alcance 10×10m, dano = mod carisma' },
     ],
     '[Artista] Sinfonia Mortal': [
-      { nivel: 8, desc: '30 Performance | sem ação | 1x por turno | lâminas em 3×3m, 5× mod carisma de dano' },
-      { nivel: 14, desc: '50 Performance | sem limite por turno, mas 1 uso por Arma Sonora criada' },
-    ],
-    '[Poeta] Acordes Defensivos': [
-      { nivel: 5, desc: 'DÓ: +1 defesa' },
-      { nivel: 5, desc: 'RÉ: -1 acerto inimigo, máximo 5' },
-      { nivel: 5, desc: 'MI: -2 movimentação' },
-      { nivel: 5, desc: 'FÁ: +2 movimentação' },
-      { nivel: 5, desc: 'SOL: +1 CA, máximo 5' },
-      { nivel: 5, desc: 'LÁ: 2d4 de escudo' },
-      { nivel: 5, desc: 'SI: 2d4 de cura' },
+      { nivel: 8, desc: '20 Performance | sem ação | 1x por turno | lâminas em 3×3m, 5× mod carisma de dano | requer ao menos 1 Arma Sonora' },
+      { nivel: 14, desc: '40 Performance | sem limite por turno, mas 1 uso por Arma Sonora criada' },
     ],
     '[Poeta] Som Encantado Upgrade (Passiva)': [
-      { nivel: 5, desc: 'Habilidades afetam equipamentos e estruturas, não apenas seres vivos' },
+      { nivel: 5, desc: 'Habilidades afetam equipamentos e estruturas, não apenas seres vivos. Curas recebidas são dobradas' },
+    ],
+    '[Poeta] Juventude (Passiva)': [
+      { nivel: 8, desc: 'Eterna juventude. Sobrecura vira escudo no mesmo valor, infinitamente, para o bardo e aliados' },
     ],
     '[Poeta] Lullaby': [
-      { nivel: 8, desc: 'Onda sonora empurra inimigos em 5×5m e puxa aliados, curando 5d6 + mod carisma' },
+      { nivel: 8, desc: '10 Performance | onda sonora empurra inimigos em 5×5m e puxa aliados, curando 5d6 + mod carisma' },
     ],
     '[Poeta] Coalescência': [
-      { nivel: 8, desc: '1 aliado | divide apenas o dano sofrido pelo aliado com o bardo' },
-      { nivel: 14, desc: 'Divide dano de ambos | até 4 aliados' },
+      { nivel: 8, desc: '1 aliado escolhido | divide apenas o dano sofrido pelo aliado com o bardo' },
+      { nivel: 14, desc: 'Pode dividir o dano de até 4 aliados, se desejar' },
     ],
     '[Poeta] Acorde da Alma': [
-      { nivel: 14, desc: '2 ações completas | objetos em 5×5m ganham vida até o fim do combate' },
+      { nivel: 14, desc: '2 ações completas | objetos em 5×5m ganham vida, auxiliam contra inimigos e retornam ao estado inanimado no fim do combate' },
       { nivel: 14, desc: 'HP por raridade: Lixo 10, Comum 20, Raro 40, Épico 80, Lendário 160, Divino/Pacto 1313' },
     ],
   },
@@ -743,7 +739,7 @@ export const EVOLUCOES = {
       { nivel: 17, desc: '2x desc. curto | interromper: 6d8+mod magia+CON | acelerar: 6d12+mod magia+CON | controla 2 alvos | sem exaustão' },
     ],
     'Caminho Rubro (Passiva)': [
-      { nivel: 10, desc: 'Detecta marcados pela Dança Escarlate em 200m. 20 ML = +100m de raio' },
+      { nivel: 10, desc: 'Detecta marcados pela Dança Escarlate em 1200m. 20 ML = +1000m de raio' },
     ],
     'Lança Sanguinária': [
       { nivel: 11, desc: '2x desc. longo | 18 HP | 10d4 + magia | hemorragia acumulativa por 2 turnos | 24 ML = 2ª lança' },
@@ -757,7 +753,7 @@ export const EVOLUCOES = {
       { nivel: 20, desc: '1x desc. longo | 20 HP | granizo de sangue causa 8d12 por granizo | alvo indiscriminado' },
     ],
     '[Empírico] Experiência (Passiva)': [
-      { nivel: 5, desc: 'Imunidade permanente a efeito negativo já sofrido. +1 Ponto de Acúmulo por efeito negativo recebido ou ação nova realizada' },
+      { nivel: 5, desc: 'Imunidade permanente a efeito negativo já sofrido' },
       { nivel: 8, desc: 'Habilidades iguais acertadas contra você causam apenas metade do dano' },
     ],
     '[Empírico] Renascimento Épico': [
@@ -770,27 +766,27 @@ export const EVOLUCOES = {
       { nivel: 8, desc: '1x desc. curto | copia habilidade usada contra ele em versão sanguinolenta do nível do Hemomante' },
     ],
     '[Empírico] Mística Empírica (Passiva)': [
-      { nivel: 14, desc: 'Ataques desferidos ou dano recebido geram orbes vermelhas em quantidade igual à metade dos danos causados. Fim do turno: orbes atacam automaticamente e causam dano físico igual aos Pontos de Acúmulo' },
+      { nivel: 14, desc: 'Ataques desferidos ou dano recebido geram orbes vermelhas em quantidade igual ao dano causado. Fim do turno: atacam um único inimigo automaticamente. Cada orbe causa 1d4 de dano físico e depois se dissipa' },
     ],
     '[Guerra] Forja Hematúrgica': [
       { nivel: 5, desc: '10 HP | cria armas de sangue puro. Espadas/machados/foice/katana: 2d8; arco e 10 flechas: 1d6; duas adagas: 2d4; cajado e outras formas a critério do mestre' },
-      { nivel: 5, desc: 'Golpes curam 50% do dano causado e adicionam mod constituição como dano mágico' },
-      { nivel: 10, desc: '+2 dados de dano nas armas de sangue' },
-      { nivel: 15, desc: '+2 dados de dano adicionais nas armas de sangue' },
-      { nivel: 20, desc: '+2 dados de dano adicionais nas armas de sangue' },
+      { nivel: 5, desc: 'Golpes curam metade do dano causado e adicionam mod constituição como dano mágico' },
+      { nivel: 9, desc: '+2 dados de dano nas armas de sangue' },
+      { nivel: 13, desc: '+2 dados de dano adicionais nas armas de sangue' },
+      { nivel: 17, desc: '+2 dados de dano adicionais nas armas de sangue' },
     ],
     '[Guerra] Lascas de Sangue': [
       { nivel: 5, desc: '5 HP | ação bônus | arma não mágica recebe dano mágico adicional igual ao mod constituição' },
     ],
     '[Guerra] Pódio': [
-      { nivel: 8, desc: '1x desc. longo | 20 HP | área 16×16m | proíbe habilidades mágicas e efeitos de itens mágicos por 3 turnos; armas de sangue são exceção; criaturas ficam presas no selo' },
+      { nivel: 8, desc: '1x desc. longo | 20 HP | área 30×30m | proíbe habilidades mágicas e efeitos de itens mágicos por 3 turnos; armas de sangue são exceção; criaturas ficam presas no selo' },
     ],
     '[Guerra] Hemotese (Passiva)': [
       { nivel: 5, desc: 'Transfusão Mágica pode ser usada em ataques físicos. A cura segue os dados da Transfusão' },
     ],
     '[Guerra] Legião de Sangue': [
-      { nivel: 14, desc: '1x desc. longo | 30 HP | +1 CA e +1 defesa por litro consumido, máximo +8 CA' },
-      { nivel: 14, desc: 'Acima de 10 litros: +2 dados de dano em todas as habilidades por litro. Dura o combate inteiro' },
+      { nivel: 14, desc: '1x desc. longo | 30 HP | +1 CA e +1 defesa por litro consumido, máximo +12 CA' },
+      { nivel: 14, desc: 'Acima de 10 litros: +1 dado de dano em todas as habilidades por litro. Todos os valores duram o combate inteiro' },
     ],
   },
 

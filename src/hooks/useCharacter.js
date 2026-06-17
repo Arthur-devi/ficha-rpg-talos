@@ -78,9 +78,6 @@ const defaultCharacter = {
     },
     hemomante: {
       reservaSangue: 0,
-      pontosAcumulo: 0,
-      curasAcumuladas: 0,
-      litrosSangue: 0,
     },
   },
 
@@ -345,6 +342,18 @@ function normalizeCharacter(data = {}) {
 
   for (const legacyField of ['ma' + 'naMax', 'ma' + 'naAtual']) {
     delete merged[legacyField];
+  }
+
+  for (const legacyHemomanteResource of ['pontosAcumulo', 'curasAcumuladas', 'litrosSangue']) {
+    delete merged.classResources.hemomante[legacyHemomanteResource];
+  }
+
+  if (merged.shikata === 'bardo') {
+    const legacyBardoSubclasses = {
+      'Artista (Ofensivo)': 'Artista',
+      'Poeta (Defensivo)': 'Poeta',
+    };
+    merged.subclasse = legacyBardoSubclasses[merged.subclasse] || merged.subclasse;
   }
 
   if (Array.isArray(merged.habilidadesMagicas)) {

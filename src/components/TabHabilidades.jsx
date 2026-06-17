@@ -46,12 +46,15 @@ function BardoResources({ char, update }) {
   const resources = char.classResources?.bardo || {};
   const setResource = (key, value) => update(`classResources.bardo.${key}`, clampCounter(value));
   const adjust = (key, delta) => setResource(key, (resources[key] || 0) + delta);
+  const subclasse = char.subclasse || '';
 
   const fields = [
     { key: 'performance', label: 'Performance', step: 10 },
-    { key: 'armasSonoras', label: 'Armas Sonoras', step: 1 },
     { key: 'concertosSucesso', label: 'Concertos Seguidos', step: 1 },
   ];
+  if (subclasse === 'Artista') {
+    fields.splice(1, 0, { key: 'armasSonoras', label: 'Armas Sonoras', step: 1 });
+  }
 
   return (
     <div className="card">
@@ -85,18 +88,8 @@ function HemomanteResources({ char, update }) {
   const setResource = (key, value) => update(`classResources.hemomante.${key}`, clampCounter(value));
   const adjust = (key, delta) => setResource(key, (resources[key] || 0) + delta);
   const maxReserva = Math.max(0, (Number(char.nivel) || 1) * 4);
-  const subclasse = char.subclasse || '';
 
   const fields = [{ key: 'reservaSangue', label: 'Reserva ML', step: 5, max: maxReserva }];
-  if (subclasse === 'Hemomante Empírico') {
-    fields.push(
-      { key: 'pontosAcumulo', label: 'Pontos Acúmulo', step: 1 },
-      { key: 'curasAcumuladas', label: 'Curas +', step: 1 },
-    );
-  }
-  if (subclasse === 'Hemomante da Guerra') {
-    fields.push({ key: 'litrosSangue', label: 'Litros de Sangue', step: 1 });
-  }
 
   return (
     <div className="card">
@@ -124,11 +117,6 @@ function HemomanteResources({ char, update }) {
                 {field.key === 'reservaSangue' && (
                   <div style={{ marginTop: 6, fontSize: '0.72rem', color: 'var(--ink-faded)', fontFamily: 'var(--font-heading)', textAlign: 'center' }}>
                     Máx {maxReserva} | Defesa +{Math.floor(nextValue / 2)}
-                  </div>
-                )}
-                {field.key === 'litrosSangue' && (
-                  <div style={{ marginTop: 6, fontSize: '0.72rem', color: 'var(--ink-faded)', fontFamily: 'var(--font-heading)', textAlign: 'center' }}>
-                    Legião: CA/DEF +{Math.min(nextValue, 8)} | +2 dados/litro acima de 10L
                   </div>
                 )}
               </div>
