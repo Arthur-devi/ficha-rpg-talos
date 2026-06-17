@@ -71,7 +71,7 @@ export const ORIGENS = [
     bonus: { constituicao: 5, inteligencia: 2 },
     malus: { sorte: -2, carisma: -2 },
     deslocamento: 2, limiteCansaco: 4,
-    habilidade: 'Quebra do Tempo [1x desc. longo]: Para o tempo por 1 turno',
+    habilidade: 'Quebra do Tempo [1x desc. longo]: Para o tempo por 10 segundos (1 turno em combate)',
   },
   {
     id: 'elfo', name: 'Elfo',
@@ -85,21 +85,21 @@ export const ORIGENS = [
     bonus: { destreza: 2, forca: 2, percepcao: 1 },
     malus: { carisma: -1, magia: -1 },
     deslocamento: 2, limiteCansaco: 4,
-    habilidade: 'Chamado da Floresta: Em ambientes naturais, cura 10 HP por hora',
+    habilidade: 'Chamado da Floresta: Em ambientes naturais, cura 10 HP por hora. Ferimentos graves são cessados no processo',
   },
   {
     id: 'elfo-rubro', name: 'Elfo Rubro',
     bonus: { magia: 2, constituicao: 2 },
     malus: { carisma: -3 },
     deslocamento: 2, limiteCansaco: 5,
-    habilidade: 'Anulador + Sangue Azul: Resistente a pacto e recebe metade do dano mágico',
+    habilidade: 'Anulador: resistente à tentação do pacto e controle mental demoníaco. Sangue Azul: recebe apenas metade de todo dano mágico',
   },
   {
     id: 'elfo-maritimo', name: 'Elfo Marítimo',
     bonus: {}, extra: '+2 pontos de proficiência, +2 HP iniciais',
     malus: {},
     deslocamento: 2, limiteCansaco: 5,
-    habilidade: 'Submersos: +4 em todos atributos (menos CON) na água',
+    habilidade: 'Submersos: +4 em todos os atributos, exceto Constituição, enquanto na água. Fora d’água perde os bônus e sobrevive apenas 12 horas em solo. 5 minutos na água fornece nutrientes para esse período em terra',
   },
   {
     id: 'elfo-negro', name: 'Elfo Negro',
@@ -120,7 +120,7 @@ export const ORIGENS = [
     bonus: { forca: 2 }, extra: '+3 HP iniciais',
     malus: { carisma: -1, destreza: -1 },
     deslocamento: 2, limiteCansaco: 4,
-    habilidade: 'Fusão: Metade dos bônus e malus da segunda origem',
+    habilidade: 'Fusão: Recebe metade dos bônus e metade dos malefícios da origem mesclada',
   },
   {
     id: 'gnomo', name: 'Gnomo',
@@ -145,10 +145,10 @@ export const ORIGENS = [
   },
   {
     id: 'meio-dragao', name: 'Humano Meio Dragão',
-    bonus: { magia: 3, carisma: 2 }, extra: '+4 HP iniciais, +2 CA',
+    bonus: { magia: 3 }, extra: '+4 HP iniciais, +2 CA, +2 Carisma vs. dragões',
     malus: { destreza: -2, carisma: -2 },
     deslocamento: 2, limiteCansaco: 4,
-    habilidade: 'Dragão Ancestral [2x desc. longo]: Sopro elemental que escala por nível',
+    habilidade: 'Dragão Ancestral [2x desc. longo]: Escolha um dragão ancestral. Cada um concede um sopro diferente cujo dano escala por nível',
   },
   {
     id: 'meio-demonio', name: 'Humano Meio Demônio',
@@ -162,91 +162,91 @@ export const ORIGENS = [
     bonus: { forca: 1, magia: 1, constituicao: 1, inteligencia: 1, percepcao: 1, destreza: 1, carisma: 1, defesa: 1, sorte: 1 },
     malus: {}, extra: '-3 HP iniciais',
     deslocamento: 2, limiteCansaco: 4,
-    habilidade: 'Imortal [1x por dia]: Ao zerar HP, volta com metade da vida',
+    habilidade: 'Imortal [1x por dia]: Ao zerar HP, volta com metade de sua vida completa',
   },
   {
     id: 'kvaldir', name: 'Kvaldir',
     bonus: { forca: 2, constituicao: 2, magia: 1 }, extra: '+1 CA',
     malus: { carisma: -2, sorte: -2 },
     deslocamento: 2, limiteCansaco: 4,
-    habilidade: 'Defesa Grotesca [1x combate]: Bloqueia ataques físicos e reflete 50% dano mágico',
+    habilidade: 'Defesa Grotesca [1x por combate]: Ao consumir carne de outra origem até 1 semana atrás, faz os espinhos crescerem: bloqueia completamente ataques físicos e reflete metade do dano mágico',
   },
   {
     id: 'feral', name: 'Feral',
     bonus: { constituicao: 2, sorte: 2 },
     malus: {},
     deslocamento: 3, limiteCansaco: 3,
-    habilidade: 'Atributos Novos: 3 bônus pela parte fera escolhida',
+    habilidade: 'Atributos Novos: Dependendo da parte fera escolhida, recebe 3 bônus e novas desvantagens',
   },
   {
     id: 'goblin', name: 'Goblin',
     bonus: { destreza: 3 },
     malus: { carisma: -3 }, extra: '-1 HP inicial',
     deslocamento: 3, limiteCansaco: 3,
-    habilidade: 'Furto, Veneno Natural, Alimentação',
+    habilidade: 'Furto: +2 em jogadas furtivas. Veneno Natural: imbui armas com excrementos venenosos. Alimentação: come qualquer coisa, mesmo podre',
   },
   {
     id: 'thungan', name: 'Thungan',
     bonus: { sorte: 1 },
     malus: {},
     deslocamento: 3, limiteCansaco: 3,
-    habilidade: 'Sorte Amaldiçoada: Adquire item raro ao nascer (amaldiçoado)',
+    habilidade: 'Sorte Amaldiçoada: Sempre adquire um equipamento raro ao nascer. O item é amaldiçoado, não pode ser destruído ou descartado e sempre volta. Role 1d20 para determinar o item',
   },
   {
     id: 'tita', name: 'Titã',
-    bonus: { inteligencia: 6 },
+    bonus: { inteligencia: 6 }, extra: 'Não pode evoluir Carisma de nenhuma forma, exceto por efeito de itens',
     malus: {},
     deslocamento: 1, limiteCansaco: 7,
-    habilidade: 'Conhecimento da Vida [1x desc. longo]: Lê todas as memórias de uma criatura',
+    habilidade: 'Conhecimento da Vida [1x desc. longo]: Lê todas as memórias de uma criatura viva ou morta',
   },
   {
     id: 'guardiao', name: 'Guardião',
     bonus: {}, extra: '+5 CA',
     malus: { destreza: -3, magia: -3 },
     deslocamento: 1, limiteCansaco: 4,
-    habilidade: 'Revestimento [1 ativ./desc. longo]: +5 CA por 2 turnos',
+    habilidade: 'Revestimento [1 ativação por desc. longo, 3 tentativas/turno]: +5 CA por 2 turnos. Role 1d20; acima de 10 ativa. Crítico dobra o efeito até o fim do combate',
   },
   {
     id: 'fada', name: 'Fada',
     bonus: { constituicao: 1, sorte: 5 },
     malus: {}, extra: '-2 HP iniciais',
     deslocamento: 4, limiteCansaco: 3,
-    habilidade: 'Rapidez, Voar, Adaptação, Encantamento',
+    habilidade: 'Rapidez: movimenta-se 2x mais rápido. Voar: voa até 2x seu peso por até 10 min. Adaptação [1x desc. longo]: forja armas/armaduras com sucata em cerca de 2h. Peso: carrega no máximo 2x seu peso. Encantamento [2x desc. longo]: imbui armas com 1d4 de dano mágico',
   },
   {
     id: 'elemental', name: 'Elemental',
     bonus: { magia: 4 },
     malus: { forca: -2, carisma: -1 },
     deslocamento: 2, limiteCansaco: 5,
-    habilidade: 'Elemento + Diversificar: Converte habilidades ao elemento escolhido',
+    habilidade: 'Elemento: escolha água, fogo, terra ou ar como elemento principal. Diversificar: habilidades ofensivas sem elemento, inclusive físicas, viram o elemento escolhido e causam mod magia como dano adicional',
   },
   {
     id: 'slime', name: 'Slime',
     bonus: { carisma: 5 },
     malus: { percepcao: -5, constituicao: -5, forca: -5, magia: -5, inteligencia: -5, destreza: -5, sorte: -5 }, extra: '-5 HP iniciais',
-    deslocamento: 2, limiteCansaco: 3,
-    habilidade: 'Fofura Amorfa, Fofura Ácida, Devorar. Caminho ao nível 5',
+    deslocamento: 2, limiteCansaco: 4,
+    habilidade: 'Fofura Amorfa: muda forma e cor; cada 1kg de comida = +0,10cm e cada dia = -0,10cm. Fofura Ácida: 1d6 ácido ao contato; pode explodir como ação bônus, tomando 1d3 e causando 2d6 ácido em 5×5. Devorar: ação completa para engolir inimigo vivo; falha em teste de CON fica atordoado e sofre ácido por turno. No nível 5 escolhe um Caminho permanente',
   },
   {
     id: 'undead', name: 'Undead',
     bonus: { destreza: 5 },
     malus: {}, extra: '-3 HP iniciais',
     deslocamento: 2, limiteCansaco: 3,
-    habilidade: 'Membros Flexíveis, Necrótico, Partes Novas',
+    habilidade: 'Andar: em áreas íngremes, partes do corpo se desmembram. Necrótico: ataques corpo-a-corpo com fluidos corporais causam +2 dano. Membros Flexíveis: pode se desmembrar sem dano. Lança partes corporais: 2d4 físico (+1d a cada 2 níveis). Partes Novas: pode costurar membros de outras criaturas em cerca de 1 dia',
   },
   {
     id: 'troll-montanha', name: 'Troll da Montanha',
     bonus: { forca: 3, constituicao: 3 }, extra: '+2 HP iniciais',
     malus: { destreza: -1, carisma: -1, inteligencia: -1 },
     deslocamento: 1, limiteCansaco: 6,
-    habilidade: 'Mordida Feroz [1x desc. longo]: 2d6 físico + sangramento',
+    habilidade: 'Mordida Feroz [1x desc. longo]: 2d6 físico + sangramento por 2 turnos (+1 dado a cada 2 níveis). Também é resistente a dano de concussão',
   },
   {
     id: 'troll-floresta', name: 'Troll da Floresta',
     bonus: { magia: 2, forca: 2, constituicao: 1 },
     malus: { destreza: -2 },
     deslocamento: 2, limiteCansaco: 5,
-    habilidade: 'Armadura Enferrujada [1x desc. longo]: -1 CA em todos inimigos',
+    habilidade: 'Armadura Enferrujada [1x desc. longo]: Com um urro, corrói armaduras/vestes de todos os alvos, aplicando -1 CA até o fim do combate',
   },
   {
     id: 'gigante', name: 'Gigante',
@@ -260,7 +260,7 @@ export const ORIGENS = [
     bonus: { constituicao: 3, magia: 2, forca: 1 },
     malus: { sorte: -1, carisma: -1 },
     deslocamento: 2, limiteCansaco: 4,
-    habilidade: 'Cura Celestial: Cura 2 HP a cada ataque bem-sucedido',
+    habilidade: 'Cura Celestial: Cura 2 HP a cada ataque bem-sucedido (+1 a cada 2 níveis)',
   },
   {
     id: 'velkro', name: 'Velkro',
@@ -274,28 +274,28 @@ export const ORIGENS = [
     bonus: { constituicao: 1 }, extra: '+2 pontos à escolha',
     malus: {},
     deslocamento: 2, limiteCansaco: 4,
-    habilidade: 'Transformação [2x desc. longo]: 2 formas de criatura permanentes',
+    habilidade: 'Transformação [2x desc. longo]: Escolhe 2 formas de criatura permanentes. Cada forma traz vantagens e desvantagens específicas, como velocidade, força e resistência',
   },
   {
     id: 'vampiro', name: 'Vampiro',
     bonus: { constituicao: 4, defesa: 1 },
     malus: {},
     deslocamento: 2, limiteCansaco: 4,
-    habilidade: 'Despertar da Maldição [1x desc. longo]: +5 HP, rouba vitalidade',
+    habilidade: 'Despertar da Maldição [1x desc. longo]: Sob luz do sol, não pode ativar. Pupilas dilatam e olhos mudam. Recebe +5 HP (+2 por nível) e rouba vitalidade com ataques, curando metade do dano causado. Dura 2 turnos (+1 turno a cada 5 níveis)',
   },
   {
     id: 'lobisomem', name: 'Lobisomem',
     bonus: { constituicao: 2 },
     malus: {},
     deslocamento: 2, limiteCansaco: 5,
-    habilidade: 'Lua: Em noites de lua transforma-se; +2 atributos e CA, garras 1d6',
+    habilidade: 'Lua: Em noites de lua, transforma-se: +2 em todos os atributos e CA, recupera vida completamente, garras/mordidas 1d6 (+1d6 a cada 2 níveis). Não pode usar habilidades de shikata. Prata causa dano dobrado; derrota por prata na forma de lobo causa morte definitiva',
   },
   {
     id: 'lorv', name: 'Lorv',
-    bonus: { inteligencia: 2, sorte: 1 },
+    bonus: { inteligencia: 2, sorte: 1 }, extra: '+ metade dos atributos positivos e negativos do hospedeiro',
     malus: {},
     deslocamento: 2, limiteCansaco: 4,
-    habilidade: 'Vestígios do Passado, Estilhaços de Vida, Semelhantes',
+    habilidade: 'Vestígios do Passado: aprende com memórias da vítima. Estilhaços de Vida: força o corpo além dos limites em emergências, com risco ao recipiente. Semelhantes: reconhece Lorv ao vê-los e pressente membros da raça em 15m',
   },
 ];
 
@@ -1333,6 +1333,15 @@ export const SHIKATAS_HABILIDADES = {
   ],
 
 };
+
+// Mantem a previa curta das Shikatas sincronizada com a tabela canonica.
+const SHIKATA_PREVIEW_LIMIT = 4;
+SHIKATAS.forEach(shikata => {
+  shikata.habilidades = (SHIKATAS_HABILIDADES[shikata.id] || [])
+    .filter(habilidade => !habilidade.subclasse)
+    .slice(0, SHIKATA_PREVIEW_LIMIT)
+    .map(({ nivel, nome, desc }) => ({ nivel, nome, desc }));
+});
 
 // Função auxiliar para obter habilidades de uma shikata por nível
 export function getHabilidadesPorNivel(shikataId, nivel, subclasse = '') {
