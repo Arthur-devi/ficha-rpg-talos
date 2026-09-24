@@ -1,6 +1,6 @@
 param(
   [string]$CatalogPath = "TALOS_CATALOGO_ITENS_POR_RARIDADE.docx",
-  [string]$SystemPath = "TALOS_SISTEMA_v6_COMPLETO (1).docx"
+  [string]$SystemPath = "TALOS_SISTEMA_v6_COMPLETO.docx"
 )
 
 $ErrorActionPreference = "Stop"

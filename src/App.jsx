@@ -22,12 +22,41 @@ const TABS = [
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('identidade');
-  const { char, update, updateAttr, exportChar, importChar, addInventoryItem, removeInventoryItem, equipItem, toggleEstado, togglePericia, derived } = useCharacter();
+  const {
+    char,
+    update,
+    updateAttr,
+    levelUp,
+    spendAttributePoint,
+    refundAttributePoint,
+    setCansaco,
+    registerAbilityUse,
+    useOfficialAbility,
+    resetOfficialAbilityUse,
+    advanceAbilityPeriod,
+    performRest,
+    exportChar,
+    importChar,
+    addInventoryItem,
+    addCustomInventoryItem,
+    updateCustomInventoryItem,
+    removeInventoryItem,
+    equipItem,
+    toggleEstado,
+    togglePericia,
+    derived,
+  } = useCharacter();
   const importRef = useRef();
 
   const hpMaxTotal = derived.hpMaxTotal || char.hpMax;
   const hpPct = hpMaxTotal > 0 ? Math.max(0, Math.min(100, (char.hpAtual / hpMaxTotal) * 100)) : 0;
   const hpColor = hpPct > 60 ? '#16a34a' : hpPct > 25 ? '#d97706' : '#dc2626';
+
+  const handleLevelUp = () => {
+    const result = levelUp();
+    if (result.ok) setActiveTab('dados');
+    return result;
+  };
 
   return (
     <div>
@@ -51,6 +80,7 @@ export default function App() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 4, padding: '0 8px' }}>
             <div style={{ fontFamily: 'var(--font-heading)', fontSize: '0.72rem', color: 'var(--parch-300)', whiteSpace: 'nowrap', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis' }}>{char.name}</div>
             <div style={{ fontSize: '0.68rem', fontFamily: 'var(--font-heading)', color: hpColor, whiteSpace: 'nowrap' }}>❤️ {char.hpAtual}/{hpMaxTotal}</div>
+            {derived.isCansado && <div className="nav-fatigue-pill">CANSADO</div>}
           </div>
         )}
 
@@ -67,6 +97,15 @@ export default function App() {
         </div>
       </nav>
 
+      {derived.isCansado && (
+        <div className="global-fatigue-alert" role="alert" aria-live="assertive">
+          <span className="global-fatigue-alert-icon">!</span>
+          <strong>CANSADO</strong>
+          <span>BÔNUS DE ACERTO DA SHIKATA DESATIVADO</span>
+          <small>Cansaço {derived.cansacoAtual}/{derived.limiteCansacoTotal}</small>
+        </div>
+      )}
+
       {/* Page content */}
       <main className="page">
         {/* Character title bar */}
@@ -79,13 +118,15 @@ export default function App() {
           </div>
         )}
 
-        {activeTab === 'identidade' && <TabIdentidade char={char} update={update} />}
-        {activeTab === 'atributos' && <TabAtributos char={char} update={update} updateAttr={updateAttr} derived={derived} toggleEstado={toggleEstado} togglePericia={togglePericia} />}
-        {activeTab === 'dados' && <TabDados char={char} update={update} derived={derived} />}
-        {activeTab === 'habilidades' && <TabHabilidades char={char} update={update} />}
-        {activeTab === 'inventario' && <TabInventario char={char} derived={derived} addInventoryItem={addInventoryItem} removeInventoryItem={removeInventoryItem} equipItem={equipItem} />}
-        {activeTab === 'magias' && <TabMagias char={char} update={update} />}
-        {activeTab === 'notas' && <TabNotas char={char} update={update} />}
+        <section key={activeTab} className="tab-transition" aria-live="polite">
+          {activeTab === 'identidade' && <TabIdentidade char={char} update={update} onLevelUp={handleLevelUp} />}
+          {activeTab === 'atributos' && <TabAtributos char={char} update={update} updateAttr={updateAttr} derived={derived} toggleEstado={toggleEstado} togglePericia={togglePericia} spendAttributePoint={spendAttributePoint} refundAttributePoint={refundAttributePoint} setCansaco={setCansaco} />}
+          {activeTab === 'dados' && <TabDados char={char} update={update} derived={derived} />}
+          {activeTab === 'habilidades' && <TabHabilidades char={char} update={update} derived={derived} useOfficialAbility={useOfficialAbility} resetOfficialAbilityUse={resetOfficialAbilityUse} advanceAbilityPeriod={advanceAbilityPeriod} />}
+          {activeTab === 'inventario' && <TabInventario char={char} derived={derived} addInventoryItem={addInventoryItem} addCustomInventoryItem={addCustomInventoryItem} updateCustomInventoryItem={updateCustomInventoryItem} removeInventoryItem={removeInventoryItem} equipItem={equipItem} />}
+          {activeTab === 'magias' && <TabMagias char={char} update={update} derived={derived} registerAbilityUse={registerAbilityUse} performRest={performRest} />}
+          {activeTab === 'notas' && <TabNotas char={char} update={update} />}
+        </section>
       </main>
 
       {/* Mobile bottom nav */}

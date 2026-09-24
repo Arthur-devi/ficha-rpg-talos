@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { SHIKATAS } from '../data/system';
+import DiceStage3D from './DiceStage3D';
 
-const QUICK_ROLLS = ['1d4', '1d6', '1d8', '1d10', '1d12', '1d20', '1d100', '2d6', '2d8', '2d10'];
+const QUICK_ROLLS = ['1d2', '1d4', '1d6', '1d8', '1d10', '1d12', '1d20', '1d100', '2d6', '2d8', '2d10'];
 const HISTORY_LIMIT = 50;
 
 function rollDie(sides) {
@@ -9,7 +10,7 @@ function rollDie(sides) {
 }
 
 function assertRollBounds(count, sides) {
-  if (!Number.isInteger(count) || !Number.isInteger(sides) || count < 1 || sides < 2) {
+  if (!Number.isInteger(count) || !Number.isInteger(sides) || count < 1 || sides < 1) {
     throw new Error('Fórmula inválida.');
   }
 
@@ -118,6 +119,8 @@ export default function TabDados({ char, update, derived }) {
   const [formula, setFormula] = useState('1d20');
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
+  const [useInspiration, setUseInspiration] = useState(false);
+  const [attackModifierKey, setAttackModifierKey] = useState('');
 
   const shikataData = SHIKATAS.find(shikata => shikata.id === char.shikata);
   const activeHpRolls = derived.activeHpLevelRolls || [];
@@ -125,15 +128,41 @@ export default function TabDados({ char, update, derived }) {
   const remainingHpRolls = Math.max(0, maxHpRolls - activeHpRolls.length);
   const hitDiceFormula = useMemo(() => resolveHitDiceFormula(shikataData, derived), [shikataData, derived]);
   const diceHistory = Array.isArray(char.diceHistory) ? char.diceHistory : [];
+  const attackModifierOptions = derived.attackModifierOptions || [];
+  const selectedAttackModifier = attackModifierOptions.find(option => option.key === attackModifierKey) || attackModifierOptions[0] || null;
+
+  useEffect(() => {
+    if (!attackModifierOptions.length) {
+      setAttackModifierKey('');
+      return;
+    }
+    if (!attackModifierOptions.some(option => option.key === attackModifierKey)) {
+      setAttackModifierKey(attackModifierOptions[0].key);
+    }
+  }, [attackModifierKey, attackModifierOptions]);
 
   const saveHistory = (entry) => {
     update('diceHistory', [entry, ...diceHistory].slice(0, HISTORY_LIMIT));
   };
 
   const commitFreeRoll = (nextResult) => {
-    const entry = makeEntry(nextResult, { type: 'free-roll' });
+    const inspirationAvailable = Math.max(0, Number(char.inspiracao) || 0);
+    const inspirationUsed = useInspiration && inspirationAvailable > 0;
+    const resolvedResult = inspirationUsed
+      ? {
+        ...nextResult,
+        baseTotal: nextResult.total,
+        total: nextResult.total + 1,
+        inspirationUsed: true,
+        inspirationBonus: 1,
+      }
+      : nextResult;
+
+    const entry = makeEntry(resolvedResult, { type: 'free-roll' });
     setResult(entry);
     saveHistory(entry);
+    if (inspirationUsed) update('inspiracao', inspirationAvailable - 1);
+    setUseInspiration(false);
     setError('');
   };
 
@@ -154,6 +183,31 @@ export default function TabDados({ char, update, derived }) {
 
   const handleTalosAttribute = () => {
     commitFreeRoll(rollTalosAttribute());
+  };
+
+  const handleClassAttack = () => {
+    try {
+      if (!shikataData) throw new Error('Selecione uma Shikata antes de rolar um ataque TALOS.');
+      if (!selectedAttackModifier) throw new Error('A Shikata atual não possui modificador de acerto configurado.');
+
+      const natural = rollFormula('1d20');
+      const classBonus = derived.isCansado ? 0 : Number(selectedAttackModifier.modifier) || 0;
+      const total = natural.total + classBonus;
+      const bonusPart = { type: 'flat', sign: classBonus < 0 ? -1 : 1, value: Math.abs(classBonus), subtotal: classBonus };
+      const parts = classBonus === 0 ? natural.parts : [...natural.parts, bonusPart];
+
+      commitFreeRoll({
+        label: `Ataque TALOS — ${selectedAttackModifier.label}`,
+        formula: classBonus === 0 ? '1d20' : normalizeResolvedFormula(`1d20+${classBonus}`),
+        total,
+        parts,
+        attackModifierLabel: selectedAttackModifier.label,
+        attackModifierValue: Number(selectedAttackModifier.modifier) || 0,
+        fatiguePenaltyApplied: Boolean(derived.isCansado),
+      });
+    } catch (err) {
+      setError(err.message);
+    }
   };
 
   const buildHpRollEntry = (level) => {
@@ -217,10 +271,21 @@ export default function TabDados({ char, update, derived }) {
   };
 
   return (
-    <div className="stack">
+    <div className="dice-page-layout">
+      <div className="stack dice-main-column">
       <div className="card">
         <div className="card-header"><span>D20</span><h3>Vida por Nível</h3></div>
         <div className="card-body">
+          {remainingHpRolls > 0 && (
+            <div style={{ marginBottom: 14, padding: '10px 12px', border: '1px solid #d97706', borderRadius: 'var(--radius-md)', background: '#fff7ed', color: '#92400e', fontSize: '0.82rem', lineHeight: 1.45 }}>
+              <strong>Evolução pendente:</strong> há {remainingHpRolls} rolagem(ns) de vida disponível(is). Ao subir de nível, o TALOS manda rolar o dado de vida pós-nível 1 da Shikata que evoluiu.
+              {(char.pontosDistributivos || 0) > 0 && (
+                <div style={{ marginTop: 4 }}>
+                  Pontos distributivos disponíveis: <strong>{char.pontosDistributivos}</strong>. Depois da rolagem, distribua-os na aba Atributos.
+                </div>
+              )}
+            </div>
+          )}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 14 }}>
             <div style={{ border: '1px solid var(--parch-300)', borderRadius: 'var(--radius-md)', padding: 12, background: 'rgba(253,246,227,0.45)' }}>
               <div style={{ fontFamily: 'var(--font-heading)', fontSize: '0.68rem', color: 'var(--ink-light)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Shikata</div>
@@ -235,12 +300,16 @@ export default function TabDados({ char, update, derived }) {
             <div style={{ border: '1px solid var(--parch-300)', borderRadius: 'var(--radius-md)', padding: 12, background: 'rgba(253,246,227,0.45)' }}>
               <div style={{ fontFamily: 'var(--font-heading)', fontSize: '0.68rem', color: 'var(--ink-light)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Vida Máxima</div>
               <div className="big-num" style={{ fontSize: '2rem', marginTop: 2 }}>{derived.hpMaxTotal}</div>
-              <div style={{ fontSize: '0.78rem', color: 'var(--ink-faded)' }}>Manual {char.hpMax || 0} + níveis {derived.hpLevelRollBonus || 0}</div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--ink-faded)', lineHeight: 1.4 }}>
+                Base TALOS {derived.hpBase} + níveis {derived.hpLevelRollBonus || 0} + ajuste manual {derived.hpManualBonus || 0}
+              </div>
             </div>
           </div>
 
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button className="btn btn-primary" onClick={rollNextHp} disabled={!shikataData || remainingHpRolls <= 0 || !hitDiceFormula}>Girar próxima vida</button>
+            <button className="btn btn-primary" onClick={rollNextHp} disabled={!shikataData || remainingHpRolls <= 0 || !hitDiceFormula}>
+              {remainingHpRolls > 0 ? `Girar vida do nível ${activeHpRolls.length + 2}` : 'Vida em dia'}
+            </button>
             <button className="btn btn-secondary" onClick={rollAllHp} disabled={!shikataData || remainingHpRolls <= 0 || !hitDiceFormula}>Girar restantes</button>
             <button className="btn btn-secondary" onClick={removeLastHpRoll} disabled={activeHpRolls.length === 0}>Remover última vida</button>
           </div>
@@ -255,6 +324,50 @@ export default function TabDados({ char, update, derived }) {
                 </div>
               ))}
             </div>
+          )}
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="card-header"><span>⚔</span><h3>Acerto da Shikata</h3></div>
+        <div className="card-body">
+          {!shikataData ? (
+            <p style={{ color: 'var(--ink-faded)', fontStyle: 'italic', fontSize: '0.84rem' }}>Selecione uma Shikata em Identidade para liberar o ataque TALOS.</p>
+          ) : attackModifierOptions.length === 0 ? (
+            <p style={{ color: 'var(--ink-faded)', fontStyle: 'italic', fontSize: '0.84rem' }}>O modificador de acerto desta Shikata ainda não está estruturado.</p>
+          ) : (
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: attackModifierOptions.length > 1 ? 'minmax(180px, 1fr) minmax(180px, 1fr)' : 'minmax(180px, 1fr)', gap: 12, alignItems: 'end' }}>
+                <div className="field">
+                  <label>Modificador de acerto</label>
+                  {attackModifierOptions.length > 1 ? (
+                    <select value={selectedAttackModifier?.key || ''} onChange={e => setAttackModifierKey(e.target.value)}>
+                      {attackModifierOptions.map(option => (
+                        <option key={option.key} value={option.key}>{option.label} ({option.modifier >= 0 ? '+' : ''}{option.modifier})</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <div style={{ minHeight: 38, display: 'flex', alignItems: 'center', padding: '0 11px', border: '1px solid var(--parch-300)', borderRadius: 'var(--radius-sm)', background: 'rgba(253,246,227,0.5)', fontFamily: 'var(--font-heading)', color: 'var(--ink-dark)' }}>
+                      {selectedAttackModifier?.label} ({selectedAttackModifier?.modifier >= 0 ? '+' : ''}{selectedAttackModifier?.modifier || 0})
+                    </div>
+                  )}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <button className="btn btn-primary" onClick={handleClassAttack}>Rolar ataque TALOS</button>
+                  <span className={`badge ${derived.isCansado ? 'fatigue-danger' : ''}`}>
+                    {derived.isCansado ? 'CANSADO: bônus +0' : `Bônus ativo: ${selectedAttackModifier?.modifier >= 0 ? '+' : ''}${selectedAttackModifier?.modifier || 0}`}
+                  </span>
+                </div>
+              </div>
+              <p style={{ marginTop: 10, fontSize: '0.76rem', color: 'var(--ink-faded)', lineHeight: 1.45 }}>
+                Ataque normal = d20 + modificador principal da Shikata. Ao esgotar o Limite de Cansaço, a ficha mantém o ataque disponível, mas remove automaticamente esse bônus. A Inspiração armada abaixo também pode ser usada nesta rolagem.
+                {attackModifierOptions.some(option => option.sourceAmbiguous) && (
+                  <span style={{ display: 'block', marginTop: 5, color: '#92400e' }}>
+                    O TALOS v6 lista esta Shikata com mais de um modificador ligado por “e”, mas não explicita neste trecho se eles são somados. A ficha deixa a escolha manual para não inventar a regra.
+                  </span>
+                )}
+              </p>
+            </>
           )}
         </div>
       </div>
@@ -286,6 +399,21 @@ export default function TabDados({ char, update, derived }) {
               </button>
             ))}
           </div>
+
+          <div style={{ marginTop: 14, padding: '10px 12px', border: `1px solid ${useInspiration ? 'var(--gold-dark)' : 'var(--parch-300)'}`, borderRadius: 'var(--radius-md)', background: useInspiration ? 'rgba(212,160,23,0.10)' : 'rgba(253,246,227,0.45)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className={`btn btn-sm ${useInspiration ? 'btn-primary' : 'btn-secondary'}`}
+              disabled={(Number(char.inspiracao) || 0) <= 0}
+              onClick={() => setUseInspiration(value => !value)}
+              aria-pressed={useInspiration}
+            >
+              ✦ {useInspiration ? 'Inspiração armada' : 'Usar Inspiração (+1)'}
+            </button>
+            <div style={{ flex: 1, minWidth: 180, fontSize: '0.78rem', color: 'var(--ink-mid)', lineHeight: 1.4 }}>
+              Disponível: <strong>{Math.max(0, Number(char.inspiracao) || 0)}</strong>. Ao ativar, a próxima rolagem desta aba recebe <strong>+1</strong> e consome 1 Inspiração. Valores máximos naturais continuam marcados no dado.
+            </div>
+          </div>
         </div>
       </div>
 
@@ -311,6 +439,16 @@ export default function TabDados({ char, update, derived }) {
                     {formatPart(part, index)}
                   </div>
                 ))}
+                {result.inspirationUsed && (
+                  <div style={{ marginTop: 6, fontSize: '0.86rem', color: 'var(--gold-dark)', fontFamily: 'var(--font-heading)' }}>
+                    ✦ Inspiração: {result.baseTotal} + {result.inspirationBonus || 1} = {result.total}
+                  </div>
+                )}
+                {result.fatiguePenaltyApplied && (
+                  <div style={{ marginTop: 6, fontSize: '0.82rem', color: 'var(--red-old)', fontFamily: 'var(--font-heading)' }}>
+                    CANSADO: modificador de acerto da Shikata ({result.attackModifierLabel} {result.attackModifierValue >= 0 ? '+' : ''}{result.attackModifierValue}) não foi somado.
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -325,7 +463,7 @@ export default function TabDados({ char, update, derived }) {
               {diceHistory.slice(0, 12).map(entry => (
                 <div key={entry.id} style={{ display: 'grid', gridTemplateColumns: '80px 1fr 64px', gap: 10, alignItems: 'center', padding: '8px 10px', border: '1px solid var(--parch-300)', borderRadius: 'var(--radius-sm)', background: 'rgba(253,246,227,0.35)' }}>
                   <span style={{ fontFamily: 'var(--font-heading)', color: 'var(--ink-faded)', fontSize: '0.75rem' }}>{entry.time || ''}</span>
-                  <span style={{ color: 'var(--ink-mid)' }}>{entry.label}</span>
+                  <span style={{ color: 'var(--ink-mid)' }}>{entry.label}{entry.inspirationUsed ? ' ✦ Inspiração' : ''}</span>
                   <strong style={{ fontFamily: 'var(--font-heading)', textAlign: 'right', color: 'var(--ink-dark)' }}>{entry.total}</strong>
                 </div>
               ))}
@@ -333,6 +471,8 @@ export default function TabDados({ char, update, derived }) {
           </div>
         </div>
       )}
+      </div>
+      <DiceStage3D result={result} />
     </div>
   );
 }

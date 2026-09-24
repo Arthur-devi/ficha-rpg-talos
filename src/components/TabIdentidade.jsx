@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { ORIGENS, SHIKATAS, PROFISSOES, TENDENCIAS, getProfissaoData } from '../data/system';
 
-export default function TabIdentidade({ char, update }) {
+export default function TabIdentidade({ char, update, onLevelUp }) {
+  const [levelUpMessage, setLevelUpMessage] = useState('');
   const origemData = ORIGENS.find(o => o.id === char.origem);
   const shikataData = SHIKATAS.find(s => s.id === char.shikata);
   const profissaoData = getProfissaoData(char.profissao);
@@ -33,8 +35,32 @@ export default function TabIdentidade({ char, update }) {
           <div style={{ marginTop: 12 }} className="grid3">
             <div className="field">
               <label>Nível</label>
-              <input type="number" min="1" max="30" value={char.nivel}
-                onChange={e => update('nivel', Math.max(1, Number(e.target.value)))} />
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <input type="number" min="1" max="30" value={char.nivel}
+                  onChange={e => update('nivel', Math.max(1, Number(e.target.value)))}
+                  style={{ width: 78 }} />
+                <button
+                  className="btn btn-primary btn-sm"
+                  type="button"
+                  onClick={() => {
+                    const result = onLevelUp?.();
+                    if (!result) return;
+                    setLevelUpMessage(result.ok
+                      ? `Nível ${result.nextLevel}: +${result.pontosConcedidos} pontos distributivos. Role a vida na aba Dados.`
+                      : result.message);
+                  }}
+                >
+                  ↑ Subir de nível
+                </button>
+              </div>
+              <div style={{ marginTop: 5, fontSize: '0.7rem', color: 'var(--ink-faded)', lineHeight: 1.35 }}>
+                O campo numérico continua disponível para ajustes manuais. O botão aplica a evolução TALOS: +1 nível e +2 pontos distributivos.
+              </div>
+              {levelUpMessage && (
+                <div style={{ marginTop: 6, fontSize: '0.72rem', color: levelUpMessage.includes('Selecione') ? '#b91c1c' : '#166534', fontFamily: 'var(--font-heading)', lineHeight: 1.35 }}>
+                  {levelUpMessage}
+                </div>
+              )}
             </div>
             <div className="field">
               <label>Tendência</label>

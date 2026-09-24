@@ -90,6 +90,26 @@ function parseDamage(item, effects) {
   effects.damage = damage;
 }
 
+function parseManualEffects(item, effects) {
+  const manual = item?.effects;
+  if (!manual || typeof manual !== 'object') return;
+
+  effects.ca += toSignedNumber(manual.ca);
+  effects.hpMax += toSignedNumber(manual.hpMax);
+  effects.deslocamento += toSignedNumber(manual.deslocamento);
+
+  for (const key of ITEM_ATTRIBUTE_KEYS) {
+    addAttr(effects, key, toSignedNumber(manual.attrs?.[key]));
+  }
+
+  if (Array.isArray(manual.special)) {
+    effects.special.push(...manual.special.map(value => String(value || '').trim()).filter(Boolean));
+  } else if (manual.special) {
+    const value = String(manual.special).trim();
+    if (value) effects.special.push(value);
+  }
+}
+
 function parseStructuredStats(item, effects) {
   const stats = String(item.stats || '');
 
@@ -164,6 +184,12 @@ export function parseItemEffects(item) {
   if (!item) return effects;
 
   parseDamage(item, effects);
+  parseManualEffects(item, effects);
+
+  // Itens manuais usam exclusivamente os campos estruturados do editor para
+  // efeitos mecânicos. A descrição permanece narrativa e nunca gera bônus em dobro.
+  if (item.isCustom || item.source === 'manual') return effects;
+
   parseStructuredStats(item, effects);
   parseBonusText(item.desc, effects);
 

@@ -1,5 +1,12 @@
+import { useState } from 'react';
 import { SHIKATAS, SHIKATAS_HABILIDADES, getHabilidadesPorNivel, getHabilidadesFuturas } from '../data/system';
 import { getEvolucao } from '../data/evolucoes';
+import { formatHpCost, getAbilityAvailability, getAbilityRuntimeSpec } from '../data/abilityRuntime';
+import { buildOfficialDamageRoll, damageTypeLabel } from '../data/damageRuntime';
+import { pushDiceHistory } from '../data/diceRuntime';
+import DiceStage3D from './DiceStage3D';
+import PeriodTransitionOverlay from './PeriodTransitionOverlay';
+import AbilityUseOverlay from './AbilityUseOverlay';
 
 function clampCounter(value) {
   return Math.max(0, Number(value) || 0);
@@ -89,7 +96,10 @@ function HemomanteResources({ char, update }) {
   const adjust = (key, delta) => setResource(key, (resources[key] || 0) + delta);
   const maxReserva = Math.max(0, (Number(char.nivel) || 1) * 4);
 
-  const fields = [{ key: 'reservaSangue', label: 'Reserva ML', step: 5, max: maxReserva }];
+  const aprimoramentosPorTurno = nivel => nivel >= 20 ? 4 : nivel >= 14 ? 3 : nivel >= 5 ? 2 : 1;
+  const maxAprimoramentos = aprimoramentosPorTurno(Number(char.nivel) || 1);
+
+  const fields = [{ key: 'reservaSangue', label: 'Reserva ML', step: 1, max: maxReserva }];
 
   return (
     <div className="card">
@@ -116,7 +126,7 @@ function HemomanteResources({ char, update }) {
                 </div>
                 {field.key === 'reservaSangue' && (
                   <div style={{ marginTop: 6, fontSize: '0.72rem', color: 'var(--ink-faded)', fontFamily: 'var(--font-heading)', textAlign: 'center' }}>
-                    Máx {maxReserva} | Defesa +{Math.floor(nextValue / 2)}
+                    Máx {maxReserva} | Defesa +{Math.floor(nextValue / 2)} | Aprimoramentos: {resources.aprimoramentosUsadosTurno || 0}/{maxAprimoramentos} por turno
                   </div>
                 )}
               </div>
@@ -128,8 +138,247 @@ function HemomanteResources({ char, update }) {
   );
 }
 
-export default function TabHabilidades({ char, update }) {
+
+function AbilityRuntimePanel({ ability, char, onUse, onReset, onFeedback }) {
+  const [target, setTarget] = useState('');
+  const [useMlEnhancement, setUseMlEnhancement] = useState(false);
+  const [damageVariantId, setDamageVariantId] = useState('');
+  const spec = getAbilityRuntimeSpec(char.shikata, ability, char.nivel, char.subclasse);
+  if (!spec.trackable) return null;
+
+  const record = char.officialAbilityUsage?.[spec.key] || {};
+  const availability = getAbilityAvailability(spec, record, char.abilityTimeline, {
+    performance: char.classResources?.bardo?.performance || 0,
+    ml: char.classResources?.hemomante?.reservaSangue || 0,
+  });
+
+  const hpCostLabel = formatHpCost(spec.hpCost);
+  const damageBaseVariants = spec.damageSpec?.baseVariants || [];
+  const selectedDamageVariantId = damageVariantId || damageBaseVariants[0]?.id || '';
+  const hasRuntimeInfo = spec.maxUses != null || spec.cooldown || spec.lifetimeCap || spec.targetRule
+    || hpCostLabel || spec.performanceCost > 0 || spec.optionalMlCost > 0 || spec.essenceCost;
+  const normalizedTarget = target.trim().toLocaleLowerCase('pt-BR');
+  const targetMissing = !!spec.targetRule && !target.trim();
+  const targetAlreadyUsed = !!spec.targetRule && !!normalizedTarget && (record.targets || []).some(entry => entry.normalized === normalizedTarget);
+  const enhancementLimit = Number(char.nivel) >= 20 ? 4 : Number(char.nivel) >= 14 ? 3 : Number(char.nivel) >= 5 ? 2 : 1;
+  const enhancementsUsed = Math.max(0, Number(char.classResources?.hemomante?.aprimoramentosUsadosTurno) || 0);
+  const canBypassUseLimitWithMl = useMlEnhancement && spec.mlAllowsExtraUse
+    && (Number(char.classResources?.hemomante?.reservaSangue) || 0) >= spec.optionalMlCost
+    && enhancementsUsed < enhancementLimit;
+  const runtimeAvailable = availability.available
+    || (availability.blockedByUses && canBypassUseLimitWithMl && !availability.blockedByLifetime && !availability.blockedByCooldown && !availability.blockedByPerformance);
+  const canUse = runtimeAvailable && !targetMissing && !targetAlreadyUsed;
+  const targetInputId = `target-${spec.key.replace(/[^a-zA-Z0-9_-]/g, '-')}`;
+
+  const handleUse = () => {
+    const result = onUse?.(ability, { target, useMlEnhancement, damageVariantId: selectedDamageVariantId });
+    if (!result) return;
+    onFeedback?.({ ok: result.ok, message: result.message, detail: result });
+    if (result.ok && spec.targetRule) setTarget('');
+    if (result.ok) setUseMlEnhancement(false);
+  };
+
+  const remainingText = spec.maxUses != null
+    ? `${availability.remaining}/${spec.maxUses} restantes`
+    : spec.cooldown
+      ? availability.cooldownRemaining > 0
+        ? `recarga: ${availability.cooldownRemaining} ${spec.cooldown.unit === 'day' ? 'dia(s)' : 'turno(s)'}`
+        : 'pronta'
+      : null;
+
+  return (
+    <div className={`ability-runtime ${!runtimeAvailable ? 'blocked' : ''}`}>
+      <div className="ability-runtime-meta">
+        {spec.usageLabel && <span className="ability-runtime-pill usage">{spec.usageLabel}</span>}
+        {spec.damageSpec && (
+          <span className="ability-runtime-pill ability-damage-pill">
+            🎲 {damageBaseVariants.length > 1 ? `${damageBaseVariants.length} opções de dano` : spec.damageSpec.displayFormula}{spec.damageSpec.damageTypes?.length ? ` · ${spec.damageSpec.damageTypes.map(damageTypeLabel).join(' + ')}` : ''}
+          </span>
+        )}
+        {remainingText && <span className={`ability-runtime-pill ${runtimeAvailable ? 'ready' : 'danger'}`}>{remainingText}</span>}
+        {spec.lifetimeCap != null && <span className="ability-runtime-pill lifetime">Vida: {availability.lifetimeRemaining}/{spec.lifetimeCap}</span>}
+        {hpCostLabel && <span className="ability-runtime-pill cost">Custo: {spec.lifeCostMultiplier < 1 ? `${hpCostLabel} × ${spec.lifeCostMultiplier}` : hpCostLabel}{spec.lifeCostDiscountLabel ? ` (${spec.lifeCostDiscountLabel})` : ''}</span>}
+        {spec.performanceCost > 0 && <span className="ability-runtime-pill cost">-{spec.performanceCost} Performance</span>}
+        {spec.optionalMlCost > 0 && <span className="ability-runtime-pill optional">Aprimoramento: {spec.optionalMlCost} ML</span>}
+        {spec.essenceCost && <span className="ability-runtime-pill essence">Essência: {spec.essenceCost.amount} {spec.essenceCost.unit}</span>}
+        <span className="ability-runtime-pill fatigue">+1 Cansaço</span>
+      </div>
+
+      {spec.targetRule && (
+        <div className="ability-target-row">
+          <label htmlFor={targetInputId}>Alvo ({spec.targetRule.label})</label>
+          <input
+            id={targetInputId}
+            type="text"
+            value={target}
+            onChange={event => setTarget(event.target.value)}
+            placeholder={`Nome/identificação do ${spec.targetRule.label}`}
+          />
+          {(record.targets || []).length > 0 && (
+            <small className={targetAlreadyUsed ? 'target-used-warning' : ''}>Já usados: {(record.targets || []).map(entry => entry.label).join(', ')}</small>
+          )}
+        </div>
+      )}
+
+      {damageBaseVariants.length > 1 && (
+        <div className="ability-target-row">
+          <label>Dano a rolar</label>
+          <select value={selectedDamageVariantId} onChange={event => setDamageVariantId(event.target.value)}>
+            {damageBaseVariants.map(variant => (
+              <option key={variant.id} value={variant.id}>{variant.label} — {variant.displayFormula}</option>
+            ))}
+          </select>
+          <small>Escolha qual modo/impacto da habilidade está sendo aplicado nesta ativação.</small>
+        </div>
+      )}
+
+      {spec.optionalMlCost > 0 && (
+        <label className="ability-ml-toggle">
+          <input
+            type="checkbox"
+            checked={useMlEnhancement}
+            onChange={event => setUseMlEnhancement(event.target.checked)}
+          />
+          <span>Usar aprimoramento de {spec.optionalMlCost} ML nesta ativação ({enhancementsUsed}/{enhancementLimit} no turno){spec.mlAllowsExtraUse ? ' — pode liberar uso extra' : ''}</span>
+        </label>
+      )}
+
+      <div className="ability-runtime-actions">
+        <button type="button" className="btn btn-primary btn-sm" onClick={handleUse} disabled={!canUse}>
+          ✦ Usar habilidade
+        </button>
+        {(record.used > 0 || (record.targets || []).length > 0 || record.lastUsedTurn || record.lastUsedDay) && (
+          <button type="button" className="btn btn-secondary btn-sm" onClick={() => onReset?.(spec.key, { resetLifetime: spec.lifetimeCap != null })} title="Corrigir o contador desta habilidade">
+            ↺ Corrigir contador
+          </button>
+        )}
+      </div>
+
+      {targetAlreadyUsed && <div className="ability-runtime-warning">Este {spec.targetRule?.label} já recebeu esta habilidade dentro do limite registrado.</div>}
+      {!runtimeAvailable && (
+        <div className="ability-runtime-warning">
+          {availability.blockedByLifetime && 'Limite de usos em vida atingido.'}
+          {availability.blockedByUses && ` Sem usos restantes até ${spec.resetLabel || 'o próximo reset'}.`}
+          {availability.blockedByCooldown && ` Recarga ativa por mais ${availability.cooldownRemaining} ${spec.cooldown?.unit === 'day' ? 'dia(s)' : 'turno(s)'}.`}
+          {availability.blockedByPerformance && ` Performance insuficiente (${spec.performanceCost} necessária).`}
+        </div>
+      )}
+      {!hasRuntimeInfo && <div className="ability-runtime-note">Sem limite explícito no texto atual: o botão registra a ativação e o Cansaço.</div>}
+      {spec.essenceCost && <div className="ability-runtime-note">O custo de Essência é exibido, mas permanece manual até o subsistema de longevidade do Manipulador ser estruturado.</div>}
+    </div>
+  );
+}
+
+function AbilityTimelineControls({ char, onAdvance }) {
+  const timeline = char.abilityTimeline || {};
+  const [transitionScene, setTransitionScene] = useState(null);
+  const controls = [
+    { key: 'turn', label: 'Novo turno', icon: '↻', counter: 'turn' },
+    { key: 'combat', label: 'Novo combate', icon: '⚔', counter: 'combat' },
+    { key: 'day', label: 'Novo dia', icon: '☀', counter: 'day' },
+    { key: 'week', label: 'Nova semana', icon: '7d', counter: 'week' },
+    { key: 'month', label: 'Novo mês', icon: '☾', counter: 'month' },
+  ];
+
+  const handleAdvance = (control) => {
+    const before = Math.max(1, Number(timeline[control.counter]) || 1);
+    const after = before + 1;
+    onAdvance?.(control.key);
+    setTransitionScene({
+      id: `${Date.now()}-${control.key}`,
+      icon: control.icon,
+      label: control.label.toUpperCase(),
+      before,
+      after,
+      detail: control.key === 'combat' ? 'O turno foi reiniciado em 1.' : control.key === 'turn' ? 'Recargas por turno foram atualizadas.' : 'Recargas ligadas a este período foram atualizadas.',
+    });
+  };
+
+  return (
+    <>
+    <div className="card ability-engine-card">
+      <div className="card-header"><span>⏱</span><h3>Motor de Habilidades</h3></div>
+      <div className="card-body">
+        <div className="ability-timeline-stats">
+          <span>Turno <strong>{timeline.turn || 1}</strong></span>
+          <span>Combate <strong>{timeline.combat || 1}</strong></span>
+          <span>Dia <strong>{timeline.day || 1}</strong></span>
+          <span>Semana <strong>{timeline.week || 1}</strong></span>
+          <span>Mês <strong>{timeline.month || 1}</strong></span>
+        </div>
+        <div className="ability-timeline-actions">
+          {controls.map(control => (
+            <button key={control.key} type="button" className="btn btn-secondary btn-sm" onClick={() => handleAdvance(control)}>
+              <span>{control.icon}</span> {control.label}
+            </button>
+          ))}
+        </div>
+        <p className="ability-engine-help">
+          A ficha controla usos por turno, combate, descanso, dia, semana e mês. "Novo combate" também reinicia o turno. Descansos curto/longo resetam automaticamente as habilidades correspondentes.
+        </p>
+      </div>
+    </div>
+    <PeriodTransitionOverlay scene={transitionScene} onDone={() => setTransitionScene(null)} />
+    </>
+  );
+}
+
+export default function TabHabilidades({ char, update, derived, useOfficialAbility, resetOfficialAbilityUse, advanceAbilityPeriod }) {
   const shikataData = SHIKATAS.find(s => s.id === char.shikata);
+  const [runtimeFeedback, setRuntimeFeedback] = useState(null);
+  const [damageRoll, setDamageRoll] = useState(null);
+  const [abilityUseScene, setAbilityUseScene] = useState(null);
+
+  const handleOfficialAbilityUse = (ability, options) => {
+    const specBefore = getAbilityRuntimeSpec(char.shikata, ability, char.nivel, char.subclasse);
+    const recordBefore = char.officialAbilityUsage?.[specBefore.key] || {};
+    const availabilityBefore = getAbilityAvailability(specBefore, recordBefore, char.abilityTimeline, {
+      performance: char.classResources?.bardo?.performance || 0,
+      ml: char.classResources?.hemomante?.reservaSangue || 0,
+    });
+
+    const result = useOfficialAbility?.(ability, options);
+    if (!result?.ok) return result;
+
+    let rolledDamage = null;
+    if (result.spec?.damageSpec) {
+      try {
+        rolledDamage = buildOfficialDamageRoll(ability, result.spec.damageSpec, derived, { variantId: options?.damageVariantId, useMlEnhancement: options?.useMlEnhancement, mlCost: result.mlCost });
+        if (rolledDamage) update('diceHistory', pushDiceHistory(char.diceHistory, rolledDamage));
+      } catch (error) {
+        return { ...result, damageError: error.message || 'Não foi possível rolar o dano automaticamente.' };
+      }
+    }
+
+    const remainingBefore = availabilityBefore.remaining;
+    const remainingAfter = remainingBefore == null ? null : Math.max(0, remainingBefore - 1);
+    const lifetimeBefore = availabilityBefore.lifetimeRemaining;
+    const lifetimeAfter = lifetimeBefore == null ? null : Math.max(0, lifetimeBefore - 1);
+    const extraUse = remainingBefore === 0 && !!options?.useMlEnhancement && !!result.spec?.mlAllowsExtraUse;
+
+    setAbilityUseScene({
+      id: `${Date.now()}-${result.spec?.key || ability.nome}`,
+      name: ability.nome,
+      before: remainingBefore,
+      after: remainingAfter,
+      maxUses: result.spec?.maxUses,
+      resetLabel: result.spec?.resetLabel || null,
+      cooldown: result.spec?.cooldown || null,
+      extraUse,
+      exhausted: remainingBefore != null && remainingBefore > 0 && remainingAfter === 0,
+      lifetimeBefore,
+      lifetimeAfter,
+      lifetimeExhausted: lifetimeBefore != null && lifetimeBefore > 0 && lifetimeAfter === 0,
+      damageRoll: rolledDamage,
+    });
+
+    return { ...result, damageRoll: rolledDamage };
+  };
+
+  const handleAbilityUseSceneDone = (scene) => {
+    setAbilityUseScene(null);
+    if (scene?.damageRoll) setDamageRoll(scene.damageRoll);
+  };
 
   if (!shikataData) {
     return (
@@ -151,6 +400,22 @@ export default function TabHabilidades({ char, update }) {
 
   return (
     <div className="stack">
+      <AbilityTimelineControls char={char} onAdvance={advanceAbilityPeriod} />
+      {runtimeFeedback && (
+        <div className={`ability-runtime-feedback ${runtimeFeedback.ok ? 'success' : 'error'}`}>
+          <span>{runtimeFeedback.ok ? '✓' : '!'}</span>
+          <div>
+            <strong>{runtimeFeedback.ok ? 'Habilidade registrada' : 'Não foi possível usar'}</strong>
+            <p>{runtimeFeedback.message}</p>
+            {runtimeFeedback.ok && runtimeFeedback.detail?.hpCost > 0 && <small>Custo aplicado: {runtimeFeedback.detail.hpCost} HP.</small>}
+            {runtimeFeedback.ok && runtimeFeedback.detail?.mlCost > 0 && <small>Aprimoramento aplicado: {runtimeFeedback.detail.mlCost} ML.</small>}
+            {runtimeFeedback.ok && runtimeFeedback.detail?.performanceCost > 0 && <small>Performance consumida: {runtimeFeedback.detail.performanceCost}.</small>}
+            {runtimeFeedback.ok && runtimeFeedback.detail?.damageRoll && <small>Dano rolado: {runtimeFeedback.detail.damageRoll.formula} = {runtimeFeedback.detail.damageRoll.total}.</small>}
+            {runtimeFeedback.ok && runtimeFeedback.detail?.damageError && <small>{runtimeFeedback.detail.damageError}</small>}
+          </div>
+          <button type="button" onClick={() => setRuntimeFeedback(null)} aria-label="Fechar aviso">×</button>
+        </div>
+      )}
       {/* Class header */}
       <div className="card">
         <div className="card-header">
@@ -235,6 +500,13 @@ export default function TabHabilidades({ char, update }) {
                       <div className="habilidade-nome">{h.nome}</div>
                       <div className="habilidade-desc">{h.desc}</div>
                       <EvolucaoTable shikataId={char.shikata} nome={h.nome} nivelAtual={nivel} />
+                      <AbilityRuntimePanel
+                        ability={h}
+                        char={char}
+                        onUse={handleOfficialAbilityUse}
+                        onReset={resetOfficialAbilityUse}
+                        onFeedback={setRuntimeFeedback}
+                      />
                     </div>
                   ))}
                 </div>
@@ -331,6 +603,8 @@ export default function TabHabilidades({ char, update }) {
           </div>
         </div>
       </div>
+      <AbilityUseOverlay scene={abilityUseScene} onDone={handleAbilityUseSceneDone} />
+      <DiceStage3D result={damageRoll} showDock={false} />
     </div>
   );
 }

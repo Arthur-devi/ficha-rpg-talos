@@ -1,10 +1,23 @@
-import { ATTRIBUTES, PERICIAS_BY_ATTR, ESTADOS, getProfissaoData } from '../data/system';
+import { ATTRIBUTES, PERICIAS_BY_ATTR, PERICIAS_INFO, getProfissaoData } from '../data/system';
 
 function signed(value) {
   return value > 0 ? `+${value}` : `${value || 0}`;
 }
 
-function AttrBox({ attr, value, mod, onChange, minValue = -10, originBonus = 0, itemBonus = 0, classBonus = 0 }) {
+function AttrBox({
+  attr,
+  value,
+  mod,
+  onChange,
+  minValue = -10,
+  originBonus = 0,
+  itemBonus = 0,
+  classBonus = 0,
+  levelAllocation = 0,
+  canSpendPoint = false,
+  onSpendPoint,
+  onRefundPoint,
+}) {
   const isMagia = attr.key === 'magia';
   return (
     <div className="attr-box" style={isMagia ? { background: 'rgba(29,78,216,0.04)', borderColor: 'rgba(29,78,216,0.25)' } : {}}>
@@ -41,11 +54,38 @@ function AttrBox({ attr, value, mod, onChange, minValue = -10, originBonus = 0, 
           {classBonus > 0 ? '+' : ''}{classBonus} classe
         </div>
       )}
+      {levelAllocation > 0 && (
+        <div style={{ fontSize: '0.58rem', color: '#7c3aed', marginTop: 3, fontFamily: 'var(--font-heading)', lineHeight: 1.1 }}>
+          +{levelAllocation} por evolução
+        </div>
+      )}
+      <div style={{ display: 'flex', gap: 4, justifyContent: 'center', marginTop: 6 }}>
+        <button
+          type="button"
+          className="btn btn-secondary btn-sm"
+          onClick={onRefundPoint}
+          disabled={levelAllocation <= 0}
+          title="Devolver 1 ponto distributivo aplicado por evolução"
+          style={{ minWidth: 28, padding: '2px 7px' }}
+        >
+          −
+        </button>
+        <button
+          type="button"
+          className="btn btn-primary btn-sm"
+          onClick={onSpendPoint}
+          disabled={!canSpendPoint}
+          title="Gastar 1 ponto distributivo neste atributo"
+          style={{ minWidth: 28, padding: '2px 7px' }}
+        >
+          +
+        </button>
+      </div>
     </div>
   );
 }
 
-export default function TabAtributos({ char, update, updateAttr, derived, toggleEstado, togglePericia }) {
+export default function TabAtributos({ char, update, updateAttr, derived, toggleEstado, togglePericia, spendAttributePoint, refundAttributePoint, setCansaco }) {
   const hpMaxTotal = derived.hpMaxTotal || char.hpMax;
   const hpPct = Math.max(0, Math.min(100, (char.hpAtual / hpMaxTotal) * 100));
   const lockedDeslocamento = derived.originDeslocamentoBase + derived.deslocamentoBonus + derived.deslocamentoItemBonus;
@@ -68,8 +108,8 @@ export default function TabAtributos({ char, update, updateAttr, derived, toggle
                   onChange={e => update('hpAtual', Number(e.target.value))}
                   style={{ width: 70, textAlign: 'center', fontFamily: 'var(--font-heading)', fontSize: '1.4rem', fontWeight: 600 }} />
                 <span style={{ color: 'var(--ink-faded)' }}>/</span>
-                <input type="number" value={hpMaxTotal} min={1 + derived.hpLevelRollBonus}
-                  onChange={e => update('hpMax', Math.max(1, Number(e.target.value) - derived.hpLevelRollBonus))}
+                <input type="number" value={hpMaxTotal} min={1}
+                  onChange={e => update('hpManualBonus', Number(e.target.value) - derived.hpBase - derived.hpLevelRollBonus)}
                   style={{ width: 70, textAlign: 'center', fontFamily: 'var(--font-heading)', fontSize: '1.1rem' }} />
               </div>
               <div className="stat-bar-track">
@@ -82,7 +122,7 @@ export default function TabAtributos({ char, update, updateAttr, derived, toggle
                   style={{ width: 80 }} />
               </div>
               <div style={{ marginTop: 4, fontSize: '0.75rem', color: 'var(--ink-faded)', fontFamily: 'var(--font-heading)' }}>
-                Base: 12 + mod CON + origem {signed(derived.hpOriginBonus)} + itens {signed(derived.hpItemBonus)} = {derived.hpBase} | níveis {signed(derived.hpLevelRollBonus)}
+                Base TALOS: 12 + mod CON + origem {signed(derived.hpOriginBonus)} + itens {signed(derived.hpItemBonus)} = {derived.hpBase} | níveis {signed(derived.hpLevelRollBonus)} | ajuste manual {signed(derived.hpManualBonus)}
               </div>
             </div>
 
@@ -114,17 +154,29 @@ export default function TabAtributos({ char, update, updateAttr, derived, toggle
               </div>
               <div>
                 <label>Limite de Cansaço</label>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <input type="number" value={char.cansacoAtual} min={0} max={derived.limiteCansacoTotal}
-                    onChange={e => update('cansacoAtual', Math.max(0, Math.min(derived.limiteCansacoTotal, Number(e.target.value))))}
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <input type="number" value={derived.cansacoAtual} min={0} max={derived.limiteCansacoTotal}
+                    onChange={e => setCansaco?.(Number(e.target.value))}
                     style={{ width: 60, textAlign: 'center' }} />
                   <span style={{ color: 'var(--ink-faded)' }}>/</span>
                   <input type="number" value={derived.limiteCansacoTotal} min={Math.max(0, lockedLimiteCansaco)}
                     onChange={e => update('limiteCansaco', Math.max(0, Number(e.target.value) - lockedLimiteCansaco))}
                     style={{ width: 60, textAlign: 'center' }} />
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => setCansaco?.(Math.max(0, derived.cansacoAtual - 1))}>−1</button>
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => setCansaco?.(derived.cansacoAtual + 1)} disabled={derived.cansacoAtual >= derived.limiteCansacoTotal}>+1 uso</button>
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => setCansaco?.(0)} disabled={derived.cansacoAtual <= 0}>Zerar</button>
                 </div>
-                <div style={{ fontSize: '0.72rem', color: 'var(--ink-faded)', fontFamily: 'var(--font-heading)' }}>
-                  Origem {derived.originLimiteCansacoBase} + manual {derived.manualLimiteCansaco} + CON {derived.limiteCansacoBonus} = {derived.limiteCansacoTotal}
+                <div className="fatigue-track" aria-label={`Cansaço ${derived.cansacoAtual} de ${derived.limiteCansacoTotal}`}>
+                  <span style={{ width: `${derived.cansacoPercentual || 0}%` }} />
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 5 }}>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--ink-faded)', fontFamily: 'var(--font-heading)' }}>
+                    Origem {derived.originLimiteCansacoBase} + manual {derived.manualLimiteCansaco} + CON {derived.limiteCansacoBonus} = {derived.limiteCansacoTotal}
+                  </div>
+                  {derived.isCansado && <span className="badge fatigue-danger">CANSADO — bônus de acerto da Shikata desativado</span>}
+                </div>
+                <div style={{ marginTop: 4, fontSize: '0.7rem', color: 'var(--ink-faded)', lineHeight: 1.4 }}>
+                  Cada uso de habilidade consome 1 ponto deste limite. Ao atingir o máximo, habilidades continuam disponíveis, mas o modificador de acerto da classe deixa de ser somado. Descanso curto recupera o estado.
                 </div>
               </div>
               <div>
@@ -133,6 +185,24 @@ export default function TabAtributos({ char, update, updateAttr, derived, toggle
                   onChange={e => update('inspiracao', Number(e.target.value))}
                   style={{ width: 80 }} />
               </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Level progression points */}
+      <div className="card">
+        <div className="card-header"><span>⬆</span><h3>Pontos Distributivos de Evolução</h3></div>
+        <div className="card-body">
+          <div style={{ display: 'flex', gap: 18, alignItems: 'center', flexWrap: 'wrap' }}>
+            <div>
+              <div style={{ fontFamily: 'var(--font-heading)', fontSize: '0.68rem', color: 'var(--ink-light)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                Disponíveis
+              </div>
+              <div className="big-num" style={{ fontSize: '2.2rem', marginTop: 2 }}>{char.pontosDistributivos || 0}</div>
+            </div>
+            <div style={{ flex: 1, minWidth: 220, fontSize: '0.82rem', color: 'var(--ink-mid)', lineHeight: 1.55 }}>
+              Cada uso de <strong>Subir de nível</strong> concede 2 pontos. Use os botões <strong>+</strong> e <strong>−</strong> em cada atributo para distribuir ou devolver somente os pontos ganhos por evolução. A edição numérica manual dos atributos continua livre para criação de personagem e ajustes do mestre.
             </div>
           </div>
         </div>
@@ -172,6 +242,10 @@ export default function TabAtributos({ char, update, updateAttr, derived, toggle
                   originBonus={originBonus}
                   itemBonus={itemBonus}
                   classBonus={classBonus}
+                  levelAllocation={char.pontosDistribuidosNivel?.[attr.key] || 0}
+                  canSpendPoint={(char.pontosDistributivos || 0) > 0}
+                  onSpendPoint={() => spendAttributePoint?.(attr.key)}
+                  onRefundPoint={() => refundAttributePoint?.(attr.key)}
                 />
               );
             })}
@@ -207,9 +281,10 @@ export default function TabAtributos({ char, update, updateAttr, derived, toggle
       </div>
 
       {/* Perícias */}
-      <div className="card">
+      <div className="card pericias-card">
         <div className="card-header"><span>📚</span><h3>Perícias</h3></div>
         <div className="card-body">
+          <div className="pericia-hint">Passe o mouse ou foque no <strong>?</strong> para consultar o resumo oficial da perícia.</div>
           <div className="grid2">
             {Object.entries(PERICIAS_BY_ATTR).map(([attrKey, pericias]) => {
               const attr = ATTRIBUTES.find(a => a.key === attrKey);
@@ -221,9 +296,11 @@ export default function TabAtributos({ char, update, updateAttr, derived, toggle
                   {pericias.map(p => {
                     const lockedByProfession = periciasProfissao.has(p);
                     const checked = lockedByProfession || char.pericias.includes(p);
+                    const inputId = `pericia-${attrKey}-${p.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}`;
                     return (
-                      <label key={p} className={`pericia-item ${lockedByProfession ? 'locked' : ''}`} title={lockedByProfession ? `Perícia fixa da profissão: ${profissaoData.name}` : undefined}>
+                      <div key={p} className={`pericia-item ${lockedByProfession ? 'locked' : ''}`}>
                         <input
+                          id={inputId}
                           type="checkbox"
                           checked={checked}
                           disabled={lockedByProfession}
@@ -231,9 +308,18 @@ export default function TabAtributos({ char, update, updateAttr, derived, toggle
                             if (!lockedByProfession) togglePericia(p);
                           }}
                         />
-                        <span style={{ fontSize: '0.85rem' }}>{p}</span>
+                        <label htmlFor={inputId} className="pericia-name" title={lockedByProfession ? `Perícia fixa da profissão: ${profissaoData.name}` : undefined}>
+                          {p}
+                        </label>
+                        <span className="pericia-help" tabIndex={0} aria-label={`Resumo de ${p}`}>
+                          ?
+                          <span className="pericia-tooltip" role="tooltip">
+                            <strong>{p}</strong>
+                            <span>{PERICIAS_INFO[p] || 'Descrição não cadastrada no documento TALOS v6.'}</span>
+                          </span>
+                        </span>
                         {lockedByProfession && <span className="pericia-locked-tag">Profissão</span>}
-                      </label>
+                      </div>
                     );
                   })}
                 </div>
@@ -257,12 +343,18 @@ export default function TabAtributos({ char, update, updateAttr, derived, toggle
               { id: 'sangrando', name: 'SANGRANDO' },
               { id: 'atordoado', name: 'ATORDOADO' },
               { id: 'morrendo', name: 'MORRENDO' },
-            ].map(e => (
-              <button key={e.id} className={`estado-tag ${char.estados.includes(e.id) ? 'active' : ''}`}
-                onClick={() => toggleEstado(e.id)}>
-                {e.name}
-              </button>
-            ))}
+            ].map(e => {
+              const autoCansado = e.id === 'cansado';
+              const active = autoCansado ? derived.isCansado : char.estados.includes(e.id);
+              return (
+                <button key={e.id} className={`estado-tag ${active ? 'active' : ''}`}
+                  disabled={autoCansado}
+                  title={autoCansado ? 'Estado controlado automaticamente pelo Limite de Cansaço.' : undefined}
+                  onClick={() => !autoCansado && toggleEstado(e.id)}>
+                  {e.name}{autoCansado ? ' • AUTO' : ''}
+                </button>
+              );
+            })}
           </div>
           <div style={{ marginTop: 10 }}>
             <label>Estado personalizado</label>

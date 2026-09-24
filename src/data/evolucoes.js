@@ -699,17 +699,22 @@ export const EVOLUCOES = {
 
   hemomante: {
     'Reserva de Sangue (Passiva)': [
-      { nivel: 1, desc: 'Capacidade máxima: 4 ML por nível' },
+      { nivel: 1, desc: 'Capacidade máxima: 4 ML por nível | até 1 aprimoramento por turno' },
       { nivel: 1, desc: 'Metade da reserva soma como defesa durante combates' },
       { nivel: 1, desc: 'Ao fim da batalha, toda reserva é sacrificada e cura 1 HP por ML' },
+      { nivel: 5, desc: 'Até 2 aprimoramentos por turno' },
+      { nivel: 9, desc: 'Até 2 aprimoramentos por turno' },
+      { nivel: 14, desc: 'Até 3 aprimoramentos por turno' },
+      { nivel: 17, desc: 'Até 3 aprimoramentos por turno' },
+      { nivel: 20, desc: 'Até 4 aprimoramentos por turno' },
     ],
     'Transfusão Mágica': [
-      { nivel: 1, desc: '1x por turno | 2d6 + mod magia | +1d6 por 2 ML' },
-      { nivel: 5, desc: '2x por turno | 3d6 + mod magia | +2d6 por 4 ML | ML anteriores indisponíveis' },
-      { nivel: 9, desc: '2x por turno | 4d6 + mod magia | +3d6 por 6 ML' },
-      { nivel: 14, desc: '2x por turno | 5d6 + mod magia | +4d8 por 8 ML' },
-      { nivel: 17, desc: 'ML extra: 3x por turno' },
-      { nivel: 20, desc: '3x por turno | 8d8 + mod magia | +5d8 por 10 ML' },
+      { nivel: 1, desc: '1x por turno | 2d6 + mod constituição | cura metade do dano | +1d6 por 2 ML' },
+      { nivel: 5, desc: '2x por turno | 3d6 + mod constituição | +2d6 por 4 ML' },
+      { nivel: 9, desc: '2x por turno | 4d6 + mod constituição | +3d6 por 6 ML' },
+      { nivel: 14, desc: '2x por turno | 5d6 + mod constituição | +4d8 por 8 ML' },
+      { nivel: 17, desc: '3x por turno | dano e bônus por ML não especificados nesta linha da tabela' },
+      { nivel: 20, desc: '3x por turno | 8d8 + mod constituição | +5d8 por 10 ML' },
     ],
     'Cicatrização Sanguínea': [
       { nivel: 2, desc: '1 HP por ML gasto | ação bônus | cura não amplificada por outras fontes' },
@@ -717,12 +722,15 @@ export const EVOLUCOES = {
       { nivel: 20, desc: 'Regenera completamente membros perdidos' },
     ],
     'Sangue Enfeitiçado': [
-      { nivel: 2, desc: 'Custa 2 HP por fragmento | 1d6 por fragmento | +2 acerto por ML, máximo 6 | +2 dano acumulativo por acerto, máximo 4' },
-      { nivel: 5, desc: '2d6 por fragmento | +3 acerto por ML, máximo 6 | +3 dano acumulativo por acerto, máximo 6' },
+      { nivel: 2, desc: '2 HP por fragmento | 1d6 por fragmento | 2 por ação | +2 acerto por ML, máx. 6 | +2 dano acumulativo, máx. 4' },
+      { nivel: 5, desc: '2d6 por fragmento | 3 por ação | +3 acerto por ML, máx. 6 | +3 dano acumulativo, máx. 6' },
+      { nivel: 9, desc: '3d10 por fragmento | 3 por ação | +4 acerto por ML, máx. 8 | +4 dano acumulativo, máx. 8' },
+      { nivel: 15, desc: '4d10 por fragmento | 4 por ação | +4 acerto por ML sem limite | +4 dano acumulativo sem limite' },
     ],
     'Dança Escarlate': [
-      { nivel: 4, desc: '2x desc. curto | 10 HP | área 10m | 1º impacto: 2d4 + mod magia | 2º impacto em marcados: +3d4' },
-      { nivel: 8, desc: '2x desc. curto | 18 HP | área 20m | 1º impacto: 4d4 + mod magia | 2º impacto em marcados: +6d4' },
+      { nivel: 4, desc: '2x desc. curto | 10 HP | área 10m | 1º impacto: 2d4 + mod constituição | 2º impacto em marcados: +3d4' },
+      { nivel: 8, desc: '2x desc. curto | 18 HP | área 20m | 1º impacto: 4d4 + mod constituição | 2º impacto em marcados: +6d4' },
+      { nivel: 12, desc: '2x desc. curto | 25 HP | área 30m | 1º impacto: 4d6 + mod constituição | 2º impacto em marcados: +5d6' },
     ],
     'Risco Sangrento': [
       { nivel: 6, desc: '1x desc. longo | 8 HP | sacrifica modificadores exceto MAG/CON e aumenta cura pela soma sacrificada' },
@@ -734,58 +742,57 @@ export const EVOLUCOES = {
       { nivel: 7, desc: 'Sangue exposto até 5m revela fragilidade. Ataque imediato como reação, 1x por ferida' },
     ],
     'Manipulação Rubra': [
-      { nivel: 9, desc: '1x desc. curto | 15 HP | interromper: 3d8+mod magia e atordoa 1 turno | acelerar: 3d10+mod magia e hemorragia 3 turnos | exaustão mental' },
-      { nivel: 13, desc: '1x desc. curto | interromper: 4d8+mod magia+CON | acelerar: 4d10+mod magia+CON' },
-      { nivel: 17, desc: '2x desc. curto | interromper: 6d8+mod magia+CON | acelerar: 6d12+mod magia+CON | controla 2 alvos | sem exaustão' },
+      { nivel: 9, desc: '1x desc. curto | 15 HP | interromper: 4d8 + mod constituição | acelerar: 3d10 + mod magia | exaustão mental' },
+      { nivel: 13, desc: '1x desc. curto | interromper: 5d8 + mod constituição | acelerar: 4d10 + mod constituição' },
+      { nivel: 17, desc: '2x desc. curto | interromper: 6d8 + mod constituição | acelerar: 6d12 + mod constituição | controla 2 alvos | sem exaustão' },
     ],
     'Caminho Rubro (Passiva)': [
       { nivel: 10, desc: 'Detecta marcados pela Dança Escarlate em 1200m. 20 ML = +1000m de raio' },
     ],
     'Lança Sanguinária': [
-      { nivel: 11, desc: '2x desc. longo | 18 HP | 10d4 + magia | hemorragia acumulativa por 2 turnos | 24 ML = 2ª lança' },
-      { nivel: 19, desc: '2x desc. longo | 10d6 + mod magia | 36 ML = cria 2 lanças extras' },
+      { nivel: 11, desc: '2x desc. longo | 15 HP | tabela: 10d4 + mod constituição | hemorragia acumulativa por 2 turnos | 24 ML = 2ª lança' },
+      { nivel: 19, desc: 'Tabela: 10d6 + mod constituição | 36 ML = cria 2 lanças extras' },
     ],
     'Escoamento da Dor': [
-      { nivel: 12, desc: '1x desc. longo | 20 HP | marcados recebem 5d8 + mod magia | reduz vida máxima permanentemente pela metade do dano anterior | cura 3d4 por alvo' },
-      { nivel: 12, desc: '20 ML: esfera explode em 8×8m e causa +5d6 + mod constituição' },
+      { nivel: 12, desc: '1x desc. longo | 25 HP | marcados recebem 5d8 + mod constituição | reduz vida máxima permanentemente pela metade do dano anterior | cura 3d4 por alvo' },
+      { nivel: 12, desc: '20 ML: esfera explode em 8x8m e causa +5d6 + mod constituição' },
     ],
     'Vórtex Hemático': [
-      { nivel: 20, desc: '1x desc. longo | 20 HP | granizo de sangue causa 8d12 por granizo | alvo indiscriminado' },
+      { nivel: 20, desc: '1x desc. longo | 35 HP | granizo de sangue causa 8d12 por granizo | alvo indiscriminado' },
     ],
     '[Empírico] Experiência (Passiva)': [
-      { nivel: 5, desc: 'Imunidade permanente a efeito negativo já sofrido' },
+      { nivel: 5, desc: 'Imunidade a efeito negativo repetido até o fim do combate' },
       { nivel: 8, desc: 'Habilidades iguais acertadas contra você causam apenas metade do dano' },
+      { nivel: 14, desc: 'A imunidade passa a ser permanente em vida' },
     ],
     '[Empírico] Renascimento Épico': [
-      { nivel: 5, desc: '1x desc. longo | ao chegar a 0 HP, ressuscita com 25% da vida máxima e uma ação completa imediata' },
-    ],
-    '[Empírico] Herança Sanguínea (Passiva)': [
-      { nivel: 8, desc: 'Cada cura recebida aumenta as próximas curas em +1, acumulando até o fim do combate' },
+      { nivel: 5, desc: '1x desc. longo | ao chegar a 0 HP, retorna com 25% da vida máxima e uma ação completa imediata' },
+      { nivel: 14, desc: 'Retorna com a vida completa' },
     ],
     '[Empírico] Empírico': [
-      { nivel: 8, desc: '1x desc. curto | copia habilidade usada contra ele em versão sanguinolenta do nível do Hemomante' },
+      { nivel: 8, desc: '2x desc. curto | copia habilidade usada contra ele em versão sanguinolenta do nível do Hemomante | cura de acordo com o dano causado' },
     ],
     '[Empírico] Mística Empírica (Passiva)': [
       { nivel: 14, desc: 'Ataques desferidos ou dano recebido geram orbes vermelhas em quantidade igual ao dano causado. Fim do turno: atacam um único inimigo automaticamente. Cada orbe causa 1d4 de dano físico e depois se dissipa' },
     ],
+    '[Empírico] Custo Empírico (Passiva)': [
+      { nivel: 14, desc: 'Reduz pela metade o custo de vida das habilidades do Hemomante' },
+    ],
     '[Guerra] Forja Hematúrgica': [
-      { nivel: 5, desc: '10 HP | cria armas de sangue puro. Espadas/machados/foice/katana: 2d8; arco e 10 flechas: 1d6; duas adagas: 2d4; cajado e outras formas a critério do mestre' },
-      { nivel: 5, desc: 'Golpes curam metade do dano causado e adicionam mod constituição como dano mágico' },
-      { nivel: 9, desc: '+2 dados de dano nas armas de sangue' },
-      { nivel: 13, desc: '+2 dados de dano adicionais nas armas de sangue' },
-      { nivel: 17, desc: '+2 dados de dano adicionais nas armas de sangue' },
+      { nivel: 5, desc: '15 HP | cria armas de sangue puro. Espadas/machados/foice/katana: 2d8; arco e 10 flechas: 1d6; duas adagas: 2d4; cajado e outras formas a critério do mestre' },
+      { nivel: 5, desc: 'Golpes curam metade do dano causado e adicionam mod constituição como dano mágico | a cada 2 níveis, as armas ganham +1 dado de dano' },
     ],
     '[Guerra] Lascas de Sangue': [
-      { nivel: 5, desc: '5 HP | ação bônus | arma não mágica recebe dano mágico adicional igual ao mod constituição' },
-    ],
-    '[Guerra] Pódio': [
-      { nivel: 8, desc: '1x desc. longo | 20 HP | área 30×30m | proíbe habilidades mágicas e efeitos de itens mágicos por 3 turnos; armas de sangue são exceção; criaturas ficam presas no selo' },
+      { nivel: 5, desc: '10 HP | ação bônus | arma não mágica recebe dano mágico adicional igual ao mod constituição' },
     ],
     '[Guerra] Hemotese (Passiva)': [
-      { nivel: 5, desc: 'Transfusão Mágica pode ser usada em ataques físicos. A cura segue os dados da Transfusão' },
+      { nivel: 5, desc: 'Transfusão Mágica pode ser usada em ataques físicos' },
+    ],
+    '[Guerra] Pódio': [
+      { nivel: 8, desc: '1x desc. longo | 25 HP | área 30x30 | proíbe habilidades mágicas e efeitos de itens mágicos por 3 turnos; armas de sangue são exceção; criaturas ficam presas no selo' },
     ],
     '[Guerra] Legião de Sangue': [
-      { nivel: 14, desc: '1x desc. longo | 30 HP | +1 CA e +1 defesa por litro consumido, máximo +12 CA' },
+      { nivel: 14, desc: '1x desc. longo | 35 HP | +1 CA e +1 defesa por litro consumido, máximo +12 CA' },
       { nivel: 14, desc: 'Acima de 10 litros: +1 dado de dano em todas as habilidades por litro. Todos os valores duram o combate inteiro' },
     ],
   },
