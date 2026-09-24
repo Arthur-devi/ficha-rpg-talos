@@ -89,6 +89,22 @@ export default function AbilityUseOverlay({ scene, onDone }) {
           </div>
         )}
 
+        {scene.actionType && (
+          <div className={`ability-use-action ${scene.actionAfter === 0 && (scene.actionType === 'full' || scene.actionType === 'bonus') ? 'depleted' : ''}`}>
+            <span>ECONOMIA DO TURNO</span>
+            {(scene.actionType === 'full' || scene.actionType === 'bonus') ? (
+              <strong>{scene.actionLabel?.toUpperCase() || 'AÇÃO'}: {scene.actionBefore} → {scene.actionAfter}</strong>
+            ) : scene.actionType === 'reaction' ? (
+              <strong>REAÇÃO REGISTRADA</strong>
+            ) : (
+              <strong>SEM CONSUMO DE AÇÃO</strong>
+            )}
+            {scene.actionEffect && (
+              <em>+{scene.actionEffect.amount} {scene.actionEffect.type === 'bonus' ? 'AÇÃO BÔNUS' : 'AÇÃO COMPLETA'} · {scene.actionEffect.remainingTurns} TURNO(S)</em>
+            )}
+          </div>
+        )}
+
         {revealed && exhausted && (
           <div className="ability-use-exhausted">
             <span>!</span>

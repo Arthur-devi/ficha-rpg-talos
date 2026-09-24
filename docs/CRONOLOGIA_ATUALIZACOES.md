@@ -617,3 +617,125 @@ Exemplo de `2x por descanso curto`:
 - `node --check` em `abilityRuntime.js`, `damageRuntime.js`, `diceRuntime.js` e `useCharacter.js`: OK.
 - `git diff --check` executado quando aplicável sem erros de whitespace.
 - Nenhuma dependência npm nova foi adicionada.
+
+## Lote 5 — Turnos e Ações
+
+### Objetivo
+Transformar a economia de turno do TALOS v6 em regra operacional da ficha. O sistema passa a controlar as 2 ações completas + 1 ação bônus de cada turno, integrar esse custo a ataques, habilidades oficiais e Poderes manuais, registrar reações sem inventar um limite global não definido pela fonte e permitir efeitos temporários/ajustes de ações quando uma habilidade altera a economia do turno.
+
+### Regra-base implementada
+- Cada turno inicia com `2 ações completas + 1 ação bônus`.
+- Ações completas cobrem ataques, habilidades comuns e ações como correr/fugir.
+- Ações bônus cobrem andar/falar e habilidades marcadas explicitamente como `AÇÃO BÔNUS`.
+- Reações são identificadas e registradas, mas não possuem um limite global artificial de `1 por turno`, pois a regra-base do TALOS v6 não estabelece esse número.
+- `Novo turno` restaura a economia-base, limpa ajustes manuais daquele turno e avança a duração de efeitos temporários.
+- `Novo combate` também limpa efeitos/ajustes temporários de ações do combate anterior.
+
+### HUD global de ações
+- `src/components/TurnActionHud.jsx` (novo)
+  - Exibido globalmente abaixo dos avisos da ficha.
+  - Mostra ações completas restantes/total e ações bônus restantes/total por marcadores visuais.
+  - Mostra reações usadas no turno como registro contextual, sem impor limite global.
+  - Exibe ações extras temporárias e quantos turnos ainda permanecem.
+  - Atalhos `Correr/Fugir` e `Andar/Falar` consomem respectivamente 1 ação completa e 1 ação bônus.
+  - Painel `Ajustar turno` permite `+1/-1` ação completa ou bônus apenas no turno atual, cobrindo efeitos condicionais, perda/roubo de ação em alvos ou decisões do mestre sem inventar automatismos.
+- `src/styles/global.css`
+  - HUD, pips de ações, estados esgotados, efeitos temporários e layout responsivo.
+
+### Motor de ações
+- `src/data/turnRuntime.js` (novo)
+  - Centraliza a economia de turno e a classificação de custo das habilidades.
+  - Detecta `1 ação completa`, `2 ações completas`, `ação bônus`, `reação` e `sem ação` a partir do conteúdo estruturado vigente no nível atual.
+  - Evita usar cláusulas de níveis futuros na classificação atual.
+  - Passivas são `sem ação`.
+  - Ataques `[CHI]` do Monge, a partir do nível em que a regra existe, são tratados como `sem ação` conforme o TALOS v6.
+  - Bloqueia gastos quando não houver ações completas/bônus suficientes.
+  - Registra reações sem consumir um contador global inventado.
+  - Mantém efeitos temporários de ações e decrementa sua duração em `Novo turno`.
+  - Efeitos automáticos de ganho de ação são limitados a casos explicitamente mapeados e inequívocos na fonte, evitando inferências por texto genérico.
+- `src/data/abilityRuntime.js`
+  - Cada habilidade oficial passa a expor também seu `actionSpec` ao motor de uso.
+
+### Integração com personagem e saves
+- `src/hooks/useCharacter.js`
+  - Regras internas atualizadas para versão 7.
+  - Novo estado persistido `turnEconomy`, com ações gastas, ajustes manuais, efeitos temporários e registro de reações.
+  - Saves antigos migram com o turno limpo, sem alterar HP, inventário, habilidades ou demais dados.
+  - `useOfficialAbility` valida ação disponível antes de cobrar uso, HP, ML, Performance, Cansaço ou demais recursos.
+  - Se faltar ação, a ativação é interrompida sem consumir a habilidade.
+  - Novo método para gastar ações em ataques/ações rápidas/Poderes manuais.
+  - Novo método para ajustes manuais `+/-` do turno.
+
+### Habilidades oficiais
+- `src/components/TabHabilidades.jsx`
+  - Cada habilidade ativa mostra seu custo de ação.
+  - Quando uma habilidade admite mais de uma forma válida (por exemplo ação bônus ou reação), o jogador escolhe o modo antes de ativar.
+  - O botão `Usar habilidade` fica bloqueado quando não há ações completas/bônus suficientes.
+  - A cena cinematográfica de uso também mostra a economia do turno (`2 → 1`, `1 → 0`, `REAÇÃO REGISTRADA` ou `SEM CONSUMO DE AÇÃO`).
+- `src/components/AbilityUseOverlay.jsx`
+  - Nova seção `ECONOMIA DO TURNO` dentro da animação de uso.
+  - Efeitos que concedem ações exibem o ganho depois do consumo da habilidade.
+
+### Ataques na aba Dados
+- `src/components/TabDados.jsx`
+  - `Acerto da Shikata` passa a consumir 1 ação completa antes de rolar o d20.
+  - Se não houver ação completa, o ataque é bloqueado antes da rolagem.
+  - Monge pode selecionar `Ação completa` ou `Ação bônus (ação marcial)` no ataque genérico, pois o botão não consegue inferir sozinho se aquele ataque específico é soco/chute/habilidade marcial ou outra arma.
+  - Rolagens livres de dados, criação de atributo e vida por evolução continuam sem consumir ações de combate.
+
+### Poderes manuais
+- `src/components/TabMagias.jsx`
+  - Novo campo `Custo no turno` no cadastro/edição de Poderes:
+    - 1 ação completa;
+    - 2 ações completas;
+    - 1 ação bônus;
+    - Reação;
+    - Sem ação.
+  - Poderes antigos sem esse campo migram conceitualmente para 1 ação completa quando ativos; passivas permanecem sem ação.
+  - O custo é validado e consumido antes de uso, Cansaço e rolagem 3D de dano.
+
+### Regras especiais automatizadas com segurança
+- Ladino nível 5+: `MAESTRIA TÁTICA` concede permanentemente +1 ação bônus, resultando em 2 ações bônus por turno.
+- Guerreiro `ADRENALINA`: ao ativar, recebe +1 ação completa no turno atual.
+- Necromante `NECROMANCIA RÁPIDA`: ao ativar, recebe +2 ações completas no turno atual.
+- Monge `O OCEANO`: usa ação bônus e concede +1 ação completa por 2 turnos.
+- Hemomante `RENASCIMENTO ÉPICO`: ganho de ação completo é aplicado quando a habilidade é ativada pelo jogador.
+- Efeitos condicionais que alteram ações de outros alvos ou dependem de escolhas/reação do mestre permanecem ajustáveis pelo HUD em vez de receber automação especulativa.
+
+### Comportamento proposital / limites deste lote
+- Reação não possui contador global de 1 por turno porque essa regra não está definida na seção-base de turnos do TALOS v6.
+- Habilidades com uso alternativo condicionado a um evento específico podem requerer que o jogador selecione o modo válido ou use o ajuste manual quando a ficha não tem contexto suficiente do alvo/ataque inimigo.
+- Roubo/perda de ação aplicado a outros personagens não pode modificar automaticamente a ficha de outro jogador; o HUD fornece ajuste manual para representar o efeito localmente.
+- O controle de iniciativa/ordem completa de múltiplas criaturas não é criado neste lote; o objetivo é a economia do turno do personagem da ficha.
+
+### Checklist de teste
+1. Personagem comum: confirmar `2 ações completas + 1 ação bônus` no início do turno.
+2. Usar `Acerto da Shikata` duas vezes e confirmar `2 → 1 → 0`; terceira tentativa deve ser bloqueada.
+3. Clicar `Novo turno` e confirmar restauração para `2/2` completas e `1/1` bônus.
+4. Testar `Correr/Fugir` e `Andar/Falar` pelo HUD e conferir o consumo correspondente.
+5. Ladino nível 5+: confirmar `2 ações bônus` por turno pela Maestria Tática.
+6. Bardo com `MOMENTUM PERPETUUM`: confirmar custo de 2 ações completas e bloqueio se só existir 1 disponível.
+7. Habilidade marcada `AÇÃO BÔNUS`: confirmar consumo apenas da ação bônus.
+8. Habilidade marcada `REAÇÃO`: confirmar registro da reação sem reduzir ações completas/bônus.
+9. Habilidade `SEM AÇÃO`: confirmar ativação sem alterar os contadores.
+10. Necromante com `NECROMANCIA RÁPIDA`: consumir sua ação de ativação e confirmar +2 ações completas concedidas no mesmo turno.
+11. Guerreiro com `ADRENALINA`: confirmar +1 ação completa temporária após a ativação.
+12. Monge com `O OCEANO`: confirmar custo de 1 ação bônus e +1 ação completa durante 2 turnos, decaindo ao avançar turnos.
+13. Em Poderes, criar um Poder com custo `2 ações completas`, usar e confirmar bloqueio/consumo; editar para `Reação` e testar novamente.
+14. Usar `Ajustar turno` para -1/+1 ação e confirmar que o ajuste some no próximo turno.
+15. Confirmar que a animação de uso de habilidade mostra também `ECONOMIA DO TURNO` antes da eventual rolagem de dano 3D.
+
+### Validação executada
+- `node --check` em `turnRuntime.js`, `abilityRuntime.js` e `useCharacter.js`: OK.
+- Parser TypeScript aplicado novamente a todos os `src/**/*.js` e `src/**/*.jsx` após as alterações: nenhum diagnóstico de sintaxe JSX/JS.
+- Smoke tests confirmaram:
+  - Momentum Perpetuum = 2 ações completas;
+  - Sinfonia Mortal = sem ação;
+  - habilidades bônus e reação classificadas corretamente;
+  - Ladino nível 5 = 2 completas + 2 bônus;
+  - gasto de 2 ações bloqueia gasto adicional no mesmo turno;
+  - Necromancia Rápida adiciona +2 ações completas;
+  - Novo turno zera ações gastas/ajustes e reduz duração de efeitos temporários.
+- Auditoria da estrutura atual de habilidades: 376 habilidades ativas/reação/bônus analisadas, sem erro do classificador; a maioria permanece ação completa e as exceções de bônus/reação/sem ação são tratadas pelo novo motor.
+- Nenhuma dependência npm nova foi adicionada.
+- O build Vite completo continua indisponível neste ambiente porque as dependências npm não estão integralmente disponíveis e a instalação externa excede o limite; o gate visual final permanece `npm install` + `npm run dev` no ambiente local já validado nos lotes anteriores.

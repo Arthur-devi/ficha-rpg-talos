@@ -4,6 +4,7 @@ import { getEvolucao } from '../data/evolucoes';
 import { formatHpCost, getAbilityAvailability, getAbilityRuntimeSpec } from '../data/abilityRuntime';
 import { buildOfficialDamageRoll, damageTypeLabel } from '../data/damageRuntime';
 import { pushDiceHistory } from '../data/diceRuntime';
+import { canSpendAction } from '../data/turnRuntime';
 import DiceStage3D from './DiceStage3D';
 import PeriodTransitionOverlay from './PeriodTransitionOverlay';
 import AbilityUseOverlay from './AbilityUseOverlay';
@@ -143,9 +144,15 @@ function AbilityRuntimePanel({ ability, char, onUse, onReset, onFeedback }) {
   const [target, setTarget] = useState('');
   const [useMlEnhancement, setUseMlEnhancement] = useState(false);
   const [damageVariantId, setDamageVariantId] = useState('');
+  const [actionMode, setActionMode] = useState('');
   const spec = getAbilityRuntimeSpec(char.shikata, ability, char.nivel, char.subclasse);
   if (!spec.trackable) return null;
 
+  const actionOptions = spec.actionSpec?.options || [{ type: 'full', cost: 1, label: 'Ação completa' }];
+  const selectedAction = actionOptions.find(option => option.type === actionMode)
+    || actionOptions.find(option => option.type === spec.actionSpec?.defaultMode)
+    || actionOptions[0];
+  const actionAvailability = canSpendAction(char, selectedAction);
   const record = char.officialAbilityUsage?.[spec.key] || {};
   const availability = getAbilityAvailability(spec, record, char.abilityTimeline, {
     performance: char.classResources?.bardo?.performance || 0,
@@ -167,11 +174,11 @@ function AbilityRuntimePanel({ ability, char, onUse, onReset, onFeedback }) {
     && enhancementsUsed < enhancementLimit;
   const runtimeAvailable = availability.available
     || (availability.blockedByUses && canBypassUseLimitWithMl && !availability.blockedByLifetime && !availability.blockedByCooldown && !availability.blockedByPerformance);
-  const canUse = runtimeAvailable && !targetMissing && !targetAlreadyUsed;
+  const canUse = runtimeAvailable && !targetMissing && !targetAlreadyUsed && actionAvailability.ok;
   const targetInputId = `target-${spec.key.replace(/[^a-zA-Z0-9_-]/g, '-')}`;
 
   const handleUse = () => {
-    const result = onUse?.(ability, { target, useMlEnhancement, damageVariantId: selectedDamageVariantId });
+    const result = onUse?.(ability, { target, useMlEnhancement, damageVariantId: selectedDamageVariantId, actionMode: selectedAction.type });
     if (!result) return;
     onFeedback?.({ ok: result.ok, message: result.message, detail: result });
     if (result.ok && spec.targetRule) setTarget('');
@@ -201,8 +208,21 @@ function AbilityRuntimePanel({ ability, char, onUse, onReset, onFeedback }) {
         {spec.performanceCost > 0 && <span className="ability-runtime-pill cost">-{spec.performanceCost} Performance</span>}
         {spec.optionalMlCost > 0 && <span className="ability-runtime-pill optional">Aprimoramento: {spec.optionalMlCost} ML</span>}
         {spec.essenceCost && <span className="ability-runtime-pill essence">Essência: {spec.essenceCost.amount} {spec.essenceCost.unit}</span>}
+        <span className={`ability-runtime-pill action ${!actionAvailability.ok ? 'danger' : ''}`}>⏱ {selectedAction.label}</span>
         <span className="ability-runtime-pill fatigue">+1 Cansaço</span>
       </div>
+
+      {actionOptions.length > 1 && (
+        <div className="ability-target-row">
+          <label>Forma de uso no turno</label>
+          <select value={selectedAction.type} onChange={event => setActionMode(event.target.value)}>
+            {actionOptions.map(option => (
+              <option key={`${option.type}-${option.cost}`} value={option.type}>{option.label}</option>
+            ))}
+          </select>
+          <small>Algumas habilidades evoluem para permitir ação bônus ou reação. Escolha a forma usada nesta ativação.</small>
+        </div>
+      )}
 
       {spec.targetRule && (
         <div className="ability-target-row">
@@ -255,6 +275,7 @@ function AbilityRuntimePanel({ ability, char, onUse, onReset, onFeedback }) {
       </div>
 
       {targetAlreadyUsed && <div className="ability-runtime-warning">Este {spec.targetRule?.label} já recebeu esta habilidade dentro do limite registrado.</div>}
+      {!actionAvailability.ok && <div className="ability-runtime-warning">{actionAvailability.message}</div>}
       {!runtimeAvailable && (
         <div className="ability-runtime-warning">
           {availability.blockedByLifetime && 'Limite de usos em vida atingido.'}
@@ -314,7 +335,7 @@ function AbilityTimelineControls({ char, onAdvance }) {
           ))}
         </div>
         <p className="ability-engine-help">
-          A ficha controla usos por turno, combate, descanso, dia, semana e mês. "Novo combate" também reinicia o turno. Descansos curto/longo resetam automaticamente as habilidades correspondentes.
+          A ficha controla usos por turno, combate, descanso, dia, semana e mês. "Novo turno" restaura a economia de ações e avança efeitos temporários; "Novo combate" reinicia o turno e limpa ajustes de ação do combate anterior. Descansos curto/longo resetam automaticamente as habilidades correspondentes.
         </p>
       </div>
     </div>
@@ -370,6 +391,12 @@ export default function TabHabilidades({ char, update, derived, useOfficialAbili
       lifetimeAfter,
       lifetimeExhausted: lifetimeBefore != null && lifetimeBefore > 0 && lifetimeAfter === 0,
       damageRoll: rolledDamage,
+      actionType: result.action?.type || null,
+      actionLabel: result.action?.label || null,
+      actionCost: Number(result.action?.cost) || 0,
+      actionBefore: result.action?.type === 'full' ? result.actionBefore?.fullRemaining : result.action?.type === 'bonus' ? result.actionBefore?.bonusRemaining : null,
+      actionAfter: result.action?.type === 'full' ? Math.max(0, (result.actionBefore?.fullRemaining || 0) - (Number(result.action?.cost) || 0)) : result.action?.type === 'bonus' ? Math.max(0, (result.actionBefore?.bonusRemaining || 0) - (Number(result.action?.cost) || 0)) : null,
+      actionEffect: result.actionEffect || null,
     });
 
     return { ...result, damageRoll: rolledDamage };

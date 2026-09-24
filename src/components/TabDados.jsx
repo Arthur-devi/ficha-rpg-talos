@@ -115,12 +115,13 @@ function resolveHitDiceFormula(shikataData, derived) {
   return { rawFormula, resolvedFormula };
 }
 
-export default function TabDados({ char, update, derived }) {
+export default function TabDados({ char, update, derived, spendTurnAction }) {
   const [formula, setFormula] = useState('1d20');
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
   const [useInspiration, setUseInspiration] = useState(false);
   const [attackModifierKey, setAttackModifierKey] = useState('');
+  const [attackActionMode, setAttackActionMode] = useState('full');
 
   const shikataData = SHIKATAS.find(shikata => shikata.id === char.shikata);
   const activeHpRolls = derived.activeHpLevelRolls || [];
@@ -130,6 +131,14 @@ export default function TabDados({ char, update, derived }) {
   const diceHistory = Array.isArray(char.diceHistory) ? char.diceHistory : [];
   const attackModifierOptions = derived.attackModifierOptions || [];
   const selectedAttackModifier = attackModifierOptions.find(option => option.key === attackModifierKey) || attackModifierOptions[0] || null;
+  const attackActionOptions = shikataData?.id === 'monge'
+    ? [
+      { type: 'full', cost: 1, label: 'Ação completa' },
+      { type: 'bonus', cost: 1, label: 'Ação bônus (ação marcial)' },
+    ]
+    : [{ type: 'full', cost: 1, label: 'Ação completa' }];
+  const selectedAttackAction = attackActionOptions.find(option => option.type === attackActionMode) || attackActionOptions[0];
+  const attackActionRemaining = selectedAttackAction.type === 'bonus' ? (derived.turnEconomy?.bonusRemaining || 0) : (derived.turnEconomy?.fullRemaining || 0);
 
   useEffect(() => {
     if (!attackModifierOptions.length) {
@@ -140,6 +149,10 @@ export default function TabDados({ char, update, derived }) {
       setAttackModifierKey(attackModifierOptions[0].key);
     }
   }, [attackModifierKey, attackModifierOptions]);
+
+  useEffect(() => {
+    if (!attackActionOptions.some(option => option.type === attackActionMode)) setAttackActionMode(attackActionOptions[0].type);
+  }, [attackActionMode, shikataData?.id]);
 
   const saveHistory = (entry) => {
     update('diceHistory', [entry, ...diceHistory].slice(0, HISTORY_LIMIT));
@@ -189,6 +202,8 @@ export default function TabDados({ char, update, derived }) {
     try {
       if (!shikataData) throw new Error('Selecione uma Shikata antes de rolar um ataque TALOS.');
       if (!selectedAttackModifier) throw new Error('A Shikata atual não possui modificador de acerto configurado.');
+      const actionResult = spendTurnAction?.(selectedAttackAction.type, selectedAttackAction.cost, 'Ataque TALOS');
+      if (actionResult && !actionResult.ok) throw new Error(actionResult.message);
 
       const natural = rollFormula('1d20');
       const classBonus = derived.isCansado ? 0 : Number(selectedAttackModifier.modifier) || 0;
@@ -353,14 +368,20 @@ export default function TabDados({ char, update, derived }) {
                   )}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                  <button className="btn btn-primary" onClick={handleClassAttack}>Rolar ataque TALOS</button>
+                  {attackActionOptions.length > 1 && (
+                    <select value={selectedAttackAction.type} onChange={e => setAttackActionMode(e.target.value)} title="Forma de ataque neste turno">
+                      {attackActionOptions.map(option => <option key={option.type} value={option.type}>{option.label}</option>)}
+                    </select>
+                  )}
+                  <button className="btn btn-primary" onClick={handleClassAttack} disabled={attackActionRemaining < selectedAttackAction.cost}>Rolar ataque TALOS</button>
                   <span className={`badge ${derived.isCansado ? 'fatigue-danger' : ''}`}>
                     {derived.isCansado ? 'CANSADO: bônus +0' : `Bônus ativo: ${selectedAttackModifier?.modifier >= 0 ? '+' : ''}${selectedAttackModifier?.modifier || 0}`}
                   </span>
+                  <span className={`badge ${attackActionRemaining < selectedAttackAction.cost ? 'fatigue-danger' : ''}`}>{selectedAttackAction.label.toUpperCase()}</span>
                 </div>
               </div>
               <p style={{ marginTop: 10, fontSize: '0.76rem', color: 'var(--ink-faded)', lineHeight: 1.45 }}>
-                Ataque normal = d20 + modificador principal da Shikata. Ao esgotar o Limite de Cansaço, a ficha mantém o ataque disponível, mas remove automaticamente esse bônus. A Inspiração armada abaixo também pode ser usada nesta rolagem.
+                Ataque normal = d20 + modificador principal da Shikata e consome 1 ação completa. O Monge pode escolher ação bônus para uma ação marcial, conforme ESSÊNCIA. Ao esgotar o Limite de Cansaço, a ficha mantém o ataque disponível, mas remove automaticamente esse bônus. A Inspiração armada abaixo também pode ser usada nesta rolagem.
                 {attackModifierOptions.some(option => option.sourceAmbiguous) && (
                   <span style={{ display: 'block', marginTop: 5, color: '#92400e' }}>
                     O TALOS v6 lista esta Shikata com mais de um modificador ligado por “e”, mas não explicita neste trecho se eles são somados. A ficha deixa a escolha manual para não inventar a regra.

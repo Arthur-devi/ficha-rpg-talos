@@ -1,5 +1,6 @@
 import { getEvolucao } from './evolucoes.js';
 import { getOfficialAbilityDamageSpec } from './damageRuntime.js';
+import { getAbilityActionSpec } from './turnRuntime.js';
 
 const PERIOD_LABELS = {
   short: 'descanso curto',
@@ -177,6 +178,7 @@ export function getAbilityRuntimeSpec(shikataId, ability, level, subclasse) {
   const lifetimeCap = parseLifetime(allTexts);
   const targetRule = parseTargetRule(allTexts, usage.resetType);
   const damageSpec = getOfficialAbilityDamageSpec(shikataId, ability, level);
+  const actionSpec = getAbilityActionSpec(shikataId, ability, level);
 
   const costEvolutionTexts = evolutionTexts.filter(text => {
     const normalized = normalizeText(text);
@@ -219,6 +221,7 @@ export function getAbilityRuntimeSpec(shikataId, ability, level, subclasse) {
     lifetimeCap,
     targetRule,
     damageSpec,
+    actionSpec,
     hpCost,
     performanceCost,
     optionalMlCost: mlCost,

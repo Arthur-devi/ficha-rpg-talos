@@ -4,8 +4,9 @@ import { ORIGENS, SHIKATAS, getProfissaoData } from '../data/system';
 import { ITEM_ATTRIBUTE_KEYS, aggregateItemEffects } from '../data/itemEffects';
 import { getOriginEffects } from '../data/originEffects';
 import { getAbilityAvailability, getAbilityRuntimeSpec, rollCost } from '../data/abilityRuntime';
+import { adjustActionState, advanceTurnActionState, applyAbilityActionEffect, canSpendAction, getTurnEconomySnapshot, spendActionState } from '../data/turnRuntime';
 
-const CURRENT_RULES_VERSION = 6;
+const CURRENT_RULES_VERSION = 7;
 const DEFAULT_DESLOCAMENTO_BASE = 2;
 const DEFAULT_LIMITE_CANSACO_BASE = 4;
 
@@ -95,6 +96,14 @@ const defaultCharacter = {
     day: 1,
     week: 1,
     month: 1,
+  },
+  turnEconomy: {
+    fullSpent: 0,
+    bonusSpent: 0,
+    manualFullAdjustment: 0,
+    manualBonusAdjustment: 0,
+    temporaryEffects: [],
+    reactionUses: [],
   },
 
   classResources: {
@@ -431,6 +440,7 @@ export function useCharacter() {
     sorte: getMod(attrsTotal.sorte),
   };
   const attackModifierOptions = buildAttackModifierOptions(shikataData, modifierValues);
+  const turnEconomy = getTurnEconomySnapshot(char);
 
   const maxHpLevelRolls = Math.max(0, (Number(char.nivel) || 1) - 1);
   const activeHpLevelRolls = Array.isArray(char.hpLevelRolls)
@@ -488,6 +498,7 @@ export function useCharacter() {
     cansadoPorCansaco,
     attackModifierOptions,
     classAttackBonusActive: !isCansado,
+    turnEconomy,
     // CA = 8 + mod DES (limit 4) + mod CON (limit 4)
     caTotal: 8 + Math.min(getMod(attrsTotal.destreza), 4) + Math.min(getMod(attrsTotal.constituicao), 4) + (Number(char.caBonus) || 0) + originEffects.ca + itemEffects.ca,
     // HP base = 12 + mod CON
@@ -528,6 +539,14 @@ export function useCharacter() {
 
     const spec = getAbilityRuntimeSpec(char.shikata, ability, char.nivel, char.subclasse);
     if (!spec.trackable) return { ok: false, message: 'Habilidades passivas não consomem uso.' };
+
+    const actionOptions = spec.actionSpec?.options || [{ type: 'full', cost: 1, label: 'Ação completa' }];
+    const selectedAction = actionOptions.find(option => option.type === options.actionMode)
+      || actionOptions.find(option => option.type === spec.actionSpec?.defaultMode)
+      || actionOptions[0];
+    const actionAvailability = canSpendAction(char, selectedAction);
+    if (!actionAvailability.ok) return actionAvailability;
+    const actionBefore = getTurnEconomySnapshot(char);
 
     const record = char.officialAbilityUsage?.[spec.key] || {};
     const resources = {
@@ -597,11 +616,16 @@ export function useCharacter() {
       const estados = Array.isArray(prev.estados) ? prev.estados.filter(estado => estado !== 'cansado') : [];
       if (limit > 0 && nextFatigue >= limit) estados.push('cansado');
 
+      let nextTurnEconomy = spendActionState(prev.turnEconomy, selectedAction, ability.nome);
+      const actionEffectResult = applyAbilityActionEffect(nextTurnEconomy, prev.shikata, ability, prev.nivel);
+      nextTurnEconomy = actionEffectResult.turnEconomy;
+
       const next = {
         ...prev,
         hpAtual: Math.max(0, (Number(prev.hpAtual) || 0) - hpCost),
         cansacoAtual: nextFatigue,
         estados,
+        turnEconomy: nextTurnEconomy,
         officialAbilityUsage: {
           ...(prev.officialAbilityUsage || {}),
           [spec.key]: nextRecord,
@@ -638,6 +662,14 @@ export function useCharacter() {
       mlCost: useMlEnhancement ? spec.optionalMlCost : 0,
       essenceCost: spec.essenceCost,
       target: target || null,
+      action: selectedAction,
+      actionBefore,
+      actionAfter: (() => {
+        const simulated = { ...char, turnEconomy: spendActionState(char.turnEconomy, selectedAction, ability.nome) };
+        const effected = applyAbilityActionEffect(simulated.turnEconomy, char.shikata, ability, char.nivel);
+        return getTurnEconomySnapshot({ ...simulated, turnEconomy: effected.turnEconomy });
+      })(),
+      actionEffect: applyAbilityActionEffect(spendActionState(char.turnEconomy, selectedAction, ability.nome), char.shikata, ability, char.nivel).effect,
       message: `${ability.nome} utilizada.`,
     };
   }, [char, limiteCansacoTotal]);
@@ -697,7 +729,36 @@ export function useCharacter() {
           aprimoramentosUsadosTurno: 0,
         };
       }
-      const next = { ...prev, abilityTimeline: timeline, officialAbilityUsage: nextUsage, classResources: nextClassResources };
+      const nextTurnEconomy = advanceTurnActionState(prev.turnEconomy, period);
+      const next = { ...prev, abilityTimeline: timeline, officialAbilityUsage: nextUsage, classResources: nextClassResources, turnEconomy: nextTurnEconomy };
+      try { localStorage.setItem('talos_char_draft', JSON.stringify(next)); } catch {
+        // Keep in-memory edits even when persistence is blocked.
+      }
+      return next;
+    });
+  }, []);
+
+  const spendTurnAction = useCallback((type, cost = 1, label = 'Ação manual') => {
+    const option = { type, cost: Math.max(0, Number(cost) || 0), label };
+    const availability = canSpendAction(char, option);
+    if (!availability.ok) return availability;
+    const before = getTurnEconomySnapshot(char);
+    const previewTurnEconomy = spendActionState(char.turnEconomy, option, label);
+    const after = getTurnEconomySnapshot({ ...char, turnEconomy: previewTurnEconomy });
+    setChar(prev => {
+      const nextTurnEconomy = spendActionState(prev.turnEconomy, option, label);
+      const next = { ...prev, turnEconomy: nextTurnEconomy };
+      try { localStorage.setItem('talos_char_draft', JSON.stringify(next)); } catch {
+        // Keep in-memory edits even when persistence is blocked.
+      }
+      return next;
+    });
+    return { ok: true, action: option, before, after, message: `${label} registrada.` };
+  }, [char]);
+
+  const adjustTurnActions = useCallback((type, delta) => {
+    setChar(prev => {
+      const next = { ...prev, turnEconomy: adjustActionState(prev.turnEconomy, type, delta) };
       try { localStorage.setItem('talos_char_draft', JSON.stringify(next)); } catch {
         // Keep in-memory edits even when persistence is blocked.
       }
@@ -769,6 +830,8 @@ export function useCharacter() {
     useOfficialAbility,
     resetOfficialAbilityUse,
     advanceAbilityPeriod,
+    spendTurnAction,
+    adjustTurnActions,
     performRest,
     exportChar,
     importChar,
@@ -849,6 +912,12 @@ function normalizeCharacter(data = {}) {
       ...defaultCharacter.abilityTimeline,
       ...(data.abilityTimeline || {}),
     },
+    turnEconomy: {
+      ...defaultCharacter.turnEconomy,
+      ...(data.turnEconomy || {}),
+      temporaryEffects: Array.isArray(data.turnEconomy?.temporaryEffects) ? data.turnEconomy.temporaryEffects : [],
+      reactionUses: Array.isArray(data.turnEconomy?.reactionUses) ? data.turnEconomy.reactionUses : [],
+    },
     classResources: {
       ...defaultCharacter.classResources,
       ...(data.classResources || {}),
@@ -897,6 +966,16 @@ function normalizeCharacter(data = {}) {
     if ((data.talosRulesVersion || 0) < 6) {
       merged.officialAbilityUsage = merged.officialAbilityUsage && typeof merged.officialAbilityUsage === 'object' ? merged.officialAbilityUsage : {};
       merged.abilityTimeline = { ...defaultCharacter.abilityTimeline, ...(merged.abilityTimeline || {}) };
+    }
+    if ((data.talosRulesVersion || 0) < 7) {
+      merged.turnEconomy = {
+        ...defaultCharacter.turnEconomy,
+        ...(merged.turnEconomy || {}),
+        fullSpent: 0,
+        bonusSpent: 0,
+        temporaryEffects: [],
+        reactionUses: [],
+      };
     }
     merged.talosRulesVersion = CURRENT_RULES_VERSION;
   }

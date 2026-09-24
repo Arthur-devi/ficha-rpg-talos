@@ -5,6 +5,19 @@ import { DAMAGE_SCALINGS, DAMAGE_TYPES, buildCustomDamageRoll, damageTypeLabel, 
 import { pushDiceHistory } from '../data/diceRuntime';
 
 const SPELL_SCHOOLS = ['Fogo', 'Gelo', 'Raio', 'Necromancia', 'Arcano', 'Cura', 'Ilusão', 'Invocação', 'Transmutação', 'Abjuração', 'Outro'];
+const ACTION_OPTIONS = [
+  { value: 'full:1', type: 'full', cost: 1, label: '1 ação completa' },
+  { value: 'full:2', type: 'full', cost: 2, label: '2 ações completas' },
+  { value: 'bonus:1', type: 'bonus', cost: 1, label: '1 ação bônus' },
+  { value: 'reaction:0', type: 'reaction', cost: 0, label: 'Reação' },
+  { value: 'free:0', type: 'free', cost: 0, label: 'Sem ação' },
+];
+
+function actionLabel(power = {}) {
+  if (power.tipo === 'passiva') return 'Passiva';
+  const found = ACTION_OPTIONS.find(option => option.type === power.actionType && option.cost === Number(power.actionCost || 0));
+  return found?.label || '1 ação completa';
+}
 
 const EMPTY_POWER = {
   nome: '',
@@ -16,13 +29,17 @@ const EMPTY_POWER = {
   damageFormula: '',
   damageType: '',
   damageScaling: '',
+  actionType: 'full',
+  actionCost: 1,
 };
 
 function normalizedPower(power = {}) {
-  return { ...EMPTY_POWER, ...power, usos: Number(power.usos) || 0, maxUsos: Number(power.maxUsos) || 0 };
+  const merged = { ...EMPTY_POWER, ...power, usos: Number(power.usos) || 0, maxUsos: Number(power.maxUsos) || 0 };
+  if (merged.tipo === 'passiva') { merged.actionType = 'free'; merged.actionCost = 0; }
+  return merged;
 }
 
-export default function TabMagias({ char, update, derived, registerAbilityUse, performRest }) {
+export default function TabMagias({ char, update, derived, registerAbilityUse, spendTurnAction, performRest }) {
   const [novaHabilidade, setNovaHabilidade] = useState(EMPTY_POWER);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -95,6 +112,15 @@ export default function TabMagias({ char, update, derived, registerAbilityUse, p
     if (usosLeft !== null && usosLeft <= 0) return;
 
     setRuntimeError('');
+    if (habilidade.tipo !== 'passiva') {
+      const actionType = habilidade.actionType || 'full';
+      const actionCost = actionType === 'full' || actionType === 'bonus' ? Math.max(1, Number(habilidade.actionCost) || 1) : 0;
+      const actionResult = spendTurnAction?.(actionType, actionCost, habilidade.nome);
+      if (actionResult && !actionResult.ok) {
+        setRuntimeError(actionResult.message);
+        return;
+      }
+    }
     update('habilidadesMagicas', habilidades.map(h => {
       if (h.id !== id) return h;
       const newUsos = Math.min((h.usos || 0) + 1, h.maxUsos || 99);
@@ -147,7 +173,12 @@ export default function TabMagias({ char, update, derived, registerAbilityUse, p
                 </div>
                 <div className="field">
                   <label>Tipo</label>
-                  <select value={novaHabilidade.tipo} onChange={e => setNovaHabilidade(p => ({ ...p, tipo: e.target.value }))}>
+                  <select value={novaHabilidade.tipo} onChange={e => setNovaHabilidade(p => {
+                    const tipo = e.target.value;
+                    if (tipo === 'passiva') return { ...p, tipo, actionType: 'free', actionCost: 0 };
+                    if (p.tipo === 'passiva') return { ...p, tipo, actionType: 'full', actionCost: 1 };
+                    return { ...p, tipo };
+                  })}>
                     <option value="magia">Magia</option>
                     <option value="habilidade">Habilidade</option>
                     <option value="passiva">Passiva</option>
@@ -167,6 +198,21 @@ export default function TabMagias({ char, update, derived, registerAbilityUse, p
                   <input type="number" min={0} value={novaHabilidade.maxUsos}
                     onChange={e => setNovaHabilidade(p => ({ ...p, maxUsos: Number(e.target.value) }))} />
                 </div>
+              </div>
+
+              <div className="field" style={{ marginTop: 10 }}>
+                <label>Custo no turno</label>
+                <select
+                  value={`${novaHabilidade.actionType || 'full'}:${Number(novaHabilidade.actionCost) || 0}`}
+                  disabled={novaHabilidade.tipo === 'passiva'}
+                  onChange={e => {
+                    const option = ACTION_OPTIONS.find(item => item.value === e.target.value) || ACTION_OPTIONS[0];
+                    setNovaHabilidade(p => ({ ...p, actionType: option.type, actionCost: option.cost }));
+                  }}
+                >
+                  {ACTION_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                </select>
+                <small>O poder só será executado se houver ações suficientes. Reações são registradas, mas o TALOS v6 não define um limite global de reações por turno.</small>
               </div>
 
               <div className="power-damage-box">
@@ -232,6 +278,7 @@ export default function TabMagias({ char, update, derived, registerAbilityUse, p
                           <span style={{ fontFamily: 'var(--font-heading)', fontSize: '0.9rem', color: 'var(--ink-dark)' }}>{h.nome}</span>
                           <span className="badge" style={{ background: '#eff6ff', borderColor: '#93c5fd', color: '#1d4ed8' }}>{h.escola}</span>
                           <span className="badge" style={{ background: '#f5f3ff', borderColor: '#c4b5fd', color: '#7c3aed' }}>{h.tipo}</span>
+                          {h.tipo !== 'passiva' && <span className="ability-runtime-pill action">⏱ {actionLabel(h)}</span>}
                           {h.maxUsos > 0 && <span style={{ fontSize: '0.72rem', color: esgotada ? 'var(--red-old)' : 'var(--ink-faded)', fontFamily: 'var(--font-heading)' }}>{usosLeft}/{h.maxUsos} usos</span>}
                         </div>
                         {(h.damageFormula || h.damageType || h.damageScaling) && (
@@ -244,7 +291,7 @@ export default function TabMagias({ char, update, derived, registerAbilityUse, p
                         {h.desc && <p style={{ fontSize: '0.82rem', color: 'var(--ink-mid)', fontStyle: 'italic', lineHeight: 1.45, marginTop: 6 }}>{h.desc}</p>}
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flexShrink: 0 }}>
-                        <button className="btn btn-primary btn-sm" onClick={() => usarHabilidade(h.id)} disabled={esgotada || h.tipo === 'passiva'}>
+                        <button className="btn btn-primary btn-sm" onClick={() => usarHabilidade(h.id)} disabled={esgotada || h.tipo === 'passiva' || ((h.actionType || 'full') === 'full' && (derived.turnEconomy?.fullRemaining || 0) < Math.max(1, Number(h.actionCost) || 1)) || (h.actionType === 'bonus' && (derived.turnEconomy?.bonusRemaining || 0) < Math.max(1, Number(h.actionCost) || 1))}>
                           {h.damageFormula && h.tipo !== 'passiva' ? '🎲 Usar + Dano' : 'Usar'}
                         </button>
                         <button className="btn btn-secondary btn-sm" onClick={() => openEdit(h)}>Editar</button>

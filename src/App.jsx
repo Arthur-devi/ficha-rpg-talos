@@ -8,6 +8,7 @@ import TabHabilidades from './components/TabHabilidades';
 import TabInventario from './components/TabInventario';
 import TabMagias from './components/TabMagias';
 import TabNotas from './components/TabNotas';
+import TurnActionHud from './components/TurnActionHud';
 import { ORIGENS, SHIKATAS } from './data/system';
 
 const TABS = [
@@ -34,6 +35,8 @@ export default function App() {
     useOfficialAbility,
     resetOfficialAbilityUse,
     advanceAbilityPeriod,
+    spendTurnAction,
+    adjustTurnActions,
     performRest,
     exportChar,
     importChar,
@@ -106,6 +109,8 @@ export default function App() {
         </div>
       )}
 
+      <TurnActionHud char={char} derived={derived} spendTurnAction={spendTurnAction} adjustTurnActions={adjustTurnActions} />
+
       {/* Page content */}
       <main className="page">
         {/* Character title bar */}
@@ -121,10 +126,10 @@ export default function App() {
         <section key={activeTab} className="tab-transition" aria-live="polite">
           {activeTab === 'identidade' && <TabIdentidade char={char} update={update} onLevelUp={handleLevelUp} />}
           {activeTab === 'atributos' && <TabAtributos char={char} update={update} updateAttr={updateAttr} derived={derived} toggleEstado={toggleEstado} togglePericia={togglePericia} spendAttributePoint={spendAttributePoint} refundAttributePoint={refundAttributePoint} setCansaco={setCansaco} />}
-          {activeTab === 'dados' && <TabDados char={char} update={update} derived={derived} />}
+          {activeTab === 'dados' && <TabDados char={char} update={update} derived={derived} spendTurnAction={spendTurnAction} />}
           {activeTab === 'habilidades' && <TabHabilidades char={char} update={update} derived={derived} useOfficialAbility={useOfficialAbility} resetOfficialAbilityUse={resetOfficialAbilityUse} advanceAbilityPeriod={advanceAbilityPeriod} />}
           {activeTab === 'inventario' && <TabInventario char={char} derived={derived} addInventoryItem={addInventoryItem} addCustomInventoryItem={addCustomInventoryItem} updateCustomInventoryItem={updateCustomInventoryItem} removeInventoryItem={removeInventoryItem} equipItem={equipItem} />}
-          {activeTab === 'magias' && <TabMagias char={char} update={update} derived={derived} registerAbilityUse={registerAbilityUse} performRest={performRest} />}
+          {activeTab === 'magias' && <TabMagias char={char} update={update} derived={derived} registerAbilityUse={registerAbilityUse} spendTurnAction={spendTurnAction} performRest={performRest} />}
           {activeTab === 'notas' && <TabNotas char={char} update={update} />}
         </section>
       </main>
