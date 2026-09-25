@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { SHIKATAS } from '../data/system';
+import { ATTRIBUTES, PERICIAS_INFO, SHIKATAS } from '../data/system';
+import { SKILL_TEST_GUIDANCE, UNTRAINED_DISADVANTAGE_SKILLS, allSkills, characterProficiencySources, initiativeBonusFromLuta, professionSkillSpecialty, skillModifier } from '../data/skillRuntime';
+import { DEATH_SAVE_TABLE_RULE, INSPIRATION_TABLE_RULE } from '../data/tableRules';
 import DiceStage3D from './DiceStage3D';
 
 const QUICK_ROLLS = ['1d2', '1d4', '1d6', '1d8', '1d10', '1d12', '1d20', '1d100', '2d6', '2d8', '2d10'];
@@ -115,30 +117,57 @@ function resolveHitDiceFormula(shikataData, derived) {
   return { rawFormula, resolvedFormula };
 }
 
-export default function TabDados({ char, update, derived, spendTurnAction }) {
+function DeathTrack({ label, value, kind }) {
+  const max = kind === 'success' ? DEATH_SAVE_TABLE_RULE.successesToRecover : DEATH_SAVE_TABLE_RULE.failuresToDie;
+  const numeric = Math.max(0, Math.min(max, Number(value) || 0));
+  return (
+    <div className={`death-save-track ${kind}`}>
+      <span>{label}</span>
+      <div>{Array.from({ length: max }, (_, index) => <i key={index} className={index < numeric ? 'filled' : ''}>{kind === 'success' ? '✓' : '×'}</i>)}</div>
+      <strong>{numeric}/{max}</strong>
+    </div>
+  );
+}
+
+export default function TabDados({ char, update, derived, spendTurnAction, rollDeathSave, reviveCharacter }) {
   const [formula, setFormula] = useState('1d20');
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
   const [useInspiration, setUseInspiration] = useState(false);
   const [attackModifierKey, setAttackModifierKey] = useState('');
   const [attackActionMode, setAttackActionMode] = useState('full');
+  const [skillName, setSkillName] = useState('Atletismo');
+  const [skillAdjustment, setSkillAdjustment] = useState(0);
 
   const shikataData = SHIKATAS.find(shikata => shikata.id === char.shikata);
   const activeHpRolls = derived.activeHpLevelRolls || [];
-  const maxHpRolls = Math.max(0, (Number(char.nivel) || 1) - 1);
+  const maxHpRolls = Math.max(0, (Number(derived.activeShikataLevel) || 1) - 1);
   const remainingHpRolls = Math.max(0, maxHpRolls - activeHpRolls.length);
   const hitDiceFormula = useMemo(() => resolveHitDiceFormula(shikataData, derived), [shikataData, derived]);
   const diceHistory = Array.isArray(char.diceHistory) ? char.diceHistory : [];
   const attackModifierOptions = derived.attackModifierOptions || [];
   const selectedAttackModifier = attackModifierOptions.find(option => option.key === attackModifierKey) || attackModifierOptions[0] || null;
-  const attackActionOptions = shikataData?.id === 'monge'
+  const attackActionOptions = (derived.learnedShikataIds || []).includes('monge')
     ? [
       { type: 'full', cost: 1, label: 'Ação completa' },
       { type: 'bonus', cost: 1, label: 'Ação bônus (ação marcial)' },
     ]
     : [{ type: 'full', cost: 1, label: 'Ação completa' }];
   const selectedAttackAction = attackActionOptions.find(option => option.type === attackActionMode) || attackActionOptions[0];
+  const combatActive = Boolean(char.abilityTimeline?.combatActive);
   const attackActionRemaining = selectedAttackAction.type === 'bonus' ? (derived.turnEconomy?.bonusRemaining || 0) : (derived.turnEconomy?.fullRemaining || 0);
+  const attackActionBlocked = combatActive && attackActionRemaining < selectedAttackAction.cost;
+  const skillCatalog = useMemo(() => allSkills(), []);
+  const selectedSkill = skillCatalog.find(skill => skill.name === skillName) || skillCatalog[0];
+  const selectedSkillAttr = ATTRIBUTES.find(attribute => attribute.key === selectedSkill?.attributeKey);
+  const selectedSkillModifier = selectedSkill ? skillModifier(derived, selectedSkill.name) : 0;
+  const selectedSkillSources = selectedSkill ? characterProficiencySources(char, derived, selectedSkill.name) : [];
+  const selectedSkillProficient = selectedSkillSources.length > 0;
+  const initiativeExtra = selectedSkill?.name === 'Iniciativa' ? initiativeBonusFromLuta(char, derived) : 0;
+  const selectedSkillGuidance = selectedSkill ? SKILL_TEST_GUIDANCE[selectedSkill.name] : null;
+  const selectedSkillSpecialty = selectedSkill ? professionSkillSpecialty(char, selectedSkill.name) : '';
+  const untrainedDisadvantage = selectedSkill ? (!selectedSkillProficient && UNTRAINED_DISADVANTAGE_SKILLS.has(selectedSkill.name)) : false;
+  const deathState = derived.deathSaveState || { successes: 0, failures: 0, dead: false, lastRoll: null };
 
   useEffect(() => {
     if (!attackModifierOptions.length) {
@@ -158,25 +187,51 @@ export default function TabDados({ char, update, derived, spendTurnAction }) {
     update('diceHistory', [entry, ...diceHistory].slice(0, HISTORY_LIMIT));
   };
 
-  const commitFreeRoll = (nextResult) => {
+  const commitFreeRoll = (nextResult, extra = {}) => {
     const inspirationAvailable = Math.max(0, Number(char.inspiracao) || 0);
     const inspirationUsed = useInspiration && inspirationAvailable > 0;
     const resolvedResult = inspirationUsed
       ? {
         ...nextResult,
         baseTotal: nextResult.total,
-        total: nextResult.total + 1,
+        total: nextResult.total + INSPIRATION_TABLE_RULE.bonus,
         inspirationUsed: true,
-        inspirationBonus: 1,
+        inspirationBonus: INSPIRATION_TABLE_RULE.bonus,
       }
       : nextResult;
 
-    const entry = makeEntry(resolvedResult, { type: 'free-roll' });
+    const entry = makeEntry(resolvedResult, { type: 'free-roll', ...extra });
     setResult(entry);
     saveHistory(entry);
     if (inspirationUsed) update('inspiracao', inspirationAvailable - 1);
     setUseInspiration(false);
     setError('');
+  };
+
+  const handleSkillTest = () => {
+    try {
+      if (!selectedSkill) throw new Error('Selecione uma perícia.');
+      const manual = Math.max(-50, Math.min(50, Number(skillAdjustment) || 0));
+      const automaticBonus = selectedSkillModifier + initiativeExtra;
+      const resolved = normalizeResolvedFormula(`1d20+${automaticBonus + manual}`);
+      const rolled = rollFormula(resolved);
+      commitFreeRoll({
+        label: `Perícia — ${selectedSkill.name}`,
+        formula: resolved,
+        total: rolled.total,
+        parts: rolled.parts,
+        skillName: selectedSkill.name,
+        skillAttribute: selectedSkillAttr?.label || selectedSkill.attributeKey,
+        skillModifier: selectedSkillModifier,
+        skillAdjustment: manual,
+        initiativeBonus: initiativeExtra,
+        skillProficient: selectedSkillProficient,
+        skillProficiencySources: selectedSkillSources,
+        untrainedDisadvantage,
+      }, { type: 'skill-test', skillName: selectedSkill.name });
+    } catch (err) {
+      setError(err.message);
+    }
   };
 
   const handleRoll = (nextFormula = formula) => {
@@ -198,12 +253,41 @@ export default function TabDados({ char, update, derived, spendTurnAction }) {
     commitFreeRoll(rollTalosAttribute());
   };
 
+  const handleDeathSave = () => {
+    const outcome = rollDeathSave?.();
+    if (!outcome?.ok) {
+      setError(outcome?.message || 'Não foi possível realizar o Teste de Vontade.');
+      return;
+    }
+    setResult(outcome.roll);
+    setError('');
+  };
+
+  const handleRevive = () => {
+    const outcome = reviveCharacter?.(1);
+    if (!outcome?.ok) {
+      setError(outcome?.message || 'Não foi possível registrar a ressurreição.');
+      return;
+    }
+    setResult(null);
+    setError('');
+  };
+
   const handleClassAttack = () => {
     try {
       if (!shikataData) throw new Error('Selecione uma Shikata antes de rolar um ataque TALOS.');
       if (!selectedAttackModifier) throw new Error('A Shikata atual não possui modificador de acerto configurado.');
       const actionResult = spendTurnAction?.(selectedAttackAction.type, selectedAttackAction.cost, 'Ataque TALOS');
       if (actionResult && !actionResult.ok) throw new Error(actionResult.message);
+
+      if (char.originState?.precisionReady) {
+        const entry = makeEntry({ label: 'Ataque TALOS — PRECISÃO', formula: 'ACERTO CERTEIRO', total: 'CERTEIRO', parts: [], precisionAutoHit: true, noCinematic: true }, { type: 'class-attack-auto-hit' });
+        update('originState.precisionReady', false);
+        setResult(entry);
+        saveHistory(entry);
+        setError('');
+        return;
+      }
 
       const natural = rollFormula('1d20');
       const classBonus = derived.isCansado ? 0 : Number(selectedAttackModifier.modifier) || 0;
@@ -288,6 +372,43 @@ export default function TabDados({ char, update, derived, spendTurnAction }) {
   return (
     <div className="dice-page-layout">
       <div className="stack dice-main-column">
+      {(derived.isMorrendo || derived.isDead) && (
+        <div className={`card death-save-card ${derived.isDead ? 'dead' : ''}`}>
+          <div className="card-header"><span>✚</span><h3>{derived.isDead ? 'Morte Confirmada' : 'Teste de Vontade — Morrendo'}</h3></div>
+          <div className="card-body">
+            {derived.isDead ? (
+              <>
+                <div className="death-save-dead-title">MORTO</div>
+                <p className="death-save-rule">Foram registradas 3 falhas. Cura comum não remove este estado. Use o botão abaixo somente quando uma habilidade de ressurreição ou o Mestre devolver o personagem à vida.</p>
+                <div className="death-save-actions">
+                  <button type="button" className="btn btn-secondary" onClick={handleRevive}>✦ Registrar ressurreição · 1 HP</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="death-save-heading">
+                  <div>
+                    <span>REGRA DA MESA</span>
+                    <strong>{DEATH_SAVE_TABLE_RULE.die} natural · {DEATH_SAVE_TABLE_RULE.dc}+ sucesso · {DEATH_SAVE_TABLE_RULE.dc - 1}− falha</strong>
+                  </div>
+                  <div className="death-save-hp">HP {char.hpAtual}/{derived.hpMaxTotal}</div>
+                </div>
+
+                <div className="death-save-tracks">
+                  <DeathTrack label="Sucessos" value={deathState.successes} kind="success" />
+                  <DeathTrack label="Falhas" value={deathState.failures} kind="failure" />
+                </div>
+
+                <p className="death-save-rule"><strong>{DEATH_SAVE_TABLE_RULE.successesToRecover} sucessos</strong> → recupera {DEATH_SAVE_TABLE_RULE.recoveryHp} HP e sai de MORRENDO. <strong>{DEATH_SAVE_TABLE_RULE.failuresToDie} falhas</strong> → MORTE. Qualquer cura que deixe o HP acima de 0 antes da morte zera ambos os contadores. Sem modificadores e sem Inspiração.</p>
+                <div className="death-save-actions">
+                  <button type="button" className="btn btn-primary death-save-roll-btn" onClick={handleDeathSave}>🎲 Girar Teste de Vontade</button>
+                  {deathState.lastRoll != null && <span className="death-save-last">Último d20: <strong>{deathState.lastRoll}</strong></span>}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
       <div className="card">
         <div className="card-header"><span>D20</span><h3>Vida por Nível</h3></div>
         <div className="card-body">
@@ -373,15 +494,16 @@ export default function TabDados({ char, update, derived, spendTurnAction }) {
                       {attackActionOptions.map(option => <option key={option.type} value={option.type}>{option.label}</option>)}
                     </select>
                   )}
-                  <button className="btn btn-primary" onClick={handleClassAttack} disabled={attackActionRemaining < selectedAttackAction.cost}>Rolar ataque TALOS</button>
+                  <button className="btn btn-primary" onClick={handleClassAttack} disabled={attackActionBlocked}>{char.originState?.precisionReady ? 'Usar ataque CERTEIRO' : 'Rolar ataque TALOS'}</button>
                   <span className={`badge ${derived.isCansado ? 'fatigue-danger' : ''}`}>
                     {derived.isCansado ? 'CANSADO: bônus +0' : `Bônus ativo: ${selectedAttackModifier?.modifier >= 0 ? '+' : ''}${selectedAttackModifier?.modifier || 0}`}
                   </span>
-                  <span className={`badge ${attackActionRemaining < selectedAttackAction.cost ? 'fatigue-danger' : ''}`}>{selectedAttackAction.label.toUpperCase()}</span>
+                  <span className={`badge ${attackActionBlocked ? 'fatigue-danger' : ''}`}>{combatActive ? selectedAttackAction.label.toUpperCase() : 'FORA DE COMBATE · AÇÃO NÃO CONSUMIDA'}</span>
+                  {char.originState?.precisionReady && <span className="badge" style={{ background: '#ecfdf5', borderColor: '#16a34a', color: '#166534' }}>PRECISÃO ARMADA · PRÓXIMO ATAQUE CERTEIRO</span>}
                 </div>
               </div>
               <p style={{ marginTop: 10, fontSize: '0.76rem', color: 'var(--ink-faded)', lineHeight: 1.45 }}>
-                Ataque normal = d20 + modificador principal da Shikata e consome 1 ação completa. O Monge pode escolher ação bônus para uma ação marcial, conforme ESSÊNCIA. Ao esgotar o Limite de Cansaço, a ficha mantém o ataque disponível, mas remove automaticamente esse bônus. A Inspiração armada abaixo também pode ser usada nesta rolagem.
+                Ataque normal = d20 + modificador principal da Shikata e, em combate, consome 1 ação completa. Fora de combate nenhuma ação é consumida. O Monge pode escolher ação bônus para uma ação marcial, conforme ESSÊNCIA. Ao esgotar o Limite de Cansaço, a ficha mantém o ataque disponível, mas remove automaticamente esse bônus. A Inspiração armada abaixo também pode ser usada nesta rolagem.
                 {attackModifierOptions.some(option => option.sourceAmbiguous) && (
                   <span style={{ display: 'block', marginTop: 5, color: '#92400e' }}>
                     O TALOS v6 lista esta Shikata com mais de um modificador ligado por “e”, mas não explicita neste trecho se eles são somados. A ficha deixa a escolha manual para não inventar a regra.
@@ -390,6 +512,54 @@ export default function TabDados({ char, update, derived, spendTurnAction }) {
               </p>
             </>
           )}
+        </div>
+      </div>
+
+      <div className="card skill-test-card">
+        <div className="card-header"><span>◆</span><h3>Teste de Perícia</h3></div>
+        <div className="card-body">
+          <div className="skill-test-grid">
+            <div className="field">
+              <label>Perícia</label>
+              <select value={selectedSkill?.name || ''} onChange={e => setSkillName(e.target.value)}>
+                {skillCatalog.map(skill => <option key={skill.name} value={skill.name}>{skill.name}</option>)}
+              </select>
+            </div>
+            <div className="field">
+              <label>Atributo / modificador</label>
+              <div className="skill-test-static">{selectedSkillAttr?.label || '—'} <strong>{selectedSkillModifier >= 0 ? '+' : ''}{selectedSkillModifier}</strong></div>
+            </div>
+            <div className="field">
+              <label>Ajuste do Mestre</label>
+              <input type="number" min="-50" max="50" value={skillAdjustment} onChange={e => setSkillAdjustment(Number(e.target.value) || 0)} />
+            </div>
+          </div>
+
+          <div className="skill-test-summary">
+            <div className="skill-test-status-line">
+              <span className={`badge ${selectedSkillProficient ? 'skill-trained' : 'skill-untrained'}`}>
+                {selectedSkillProficient ? `PROFICIENTE · ${selectedSkillSources.join(' + ')}` : 'SEM PROFICIÊNCIA'}
+              </span>
+              {initiativeExtra > 0 && <span className="badge skill-trained">LUTA: +2 INICIATIVA</span>}
+              {selectedSkillGuidance?.difficulty && <span className="badge">DT / REFERÊNCIA: {selectedSkillGuidance.difficulty}</span>}
+              {selectedSkillSpecialty && <span className="badge">ESPECIALIDADE: {selectedSkillSpecialty}</span>}
+            </div>
+            <p><strong>{selectedSkill?.name}:</strong> {PERICIAS_INFO[selectedSkill?.name] || 'Sem descrição própria na seção PERÍCIAS do TALOS v6.'}</p>
+            {selectedSkillGuidance?.note && <p className="skill-guidance">{selectedSkillGuidance.note}</p>}
+            {untrainedDisadvantage && (
+              <p className="skill-warning">O TALOS v6 diz explicitamente que <strong>{selectedSkill.name}</strong> pode ser tentada sem a perícia, mas com desvantagem. Como o trecho não fixa uma fórmula numérica universal para “desvantagem”, a ficha não inventa penalidade: use “Ajuste do Mestre” conforme a mesa.</p>
+            )}
+            {!selectedSkillProficient && !untrainedDisadvantage && (
+              <p className="skill-note">Sem proficiência. O v6 avisa que certas ações podem ser exclusivas ou muito mais difíceis para quem não possui a perícia; o Mestre decide o caso concreto.</p>
+            )}
+          </div>
+
+          <div className="skill-test-actions">
+            <button type="button" className="btn btn-primary" onClick={handleSkillTest}>🎲 Rolar teste de {selectedSkill?.name}</button>
+            <span className="skill-formula-preview">
+              1d20 {selectedSkillModifier + initiativeExtra >= 0 ? '+' : '−'} {Math.abs(selectedSkillModifier + initiativeExtra)}{Number(skillAdjustment) ? ` ${Number(skillAdjustment) >= 0 ? '+' : '−'} ${Math.abs(Number(skillAdjustment))}` : ''}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -429,10 +599,10 @@ export default function TabDados({ char, update, derived, spendTurnAction }) {
               onClick={() => setUseInspiration(value => !value)}
               aria-pressed={useInspiration}
             >
-              ✦ {useInspiration ? 'Inspiração armada' : 'Usar Inspiração (+1)'}
+              ✦ {useInspiration ? 'Inspiração armada' : `Usar Inspiração (+${INSPIRATION_TABLE_RULE.bonus})`}
             </button>
             <div style={{ flex: 1, minWidth: 180, fontSize: '0.78rem', color: 'var(--ink-mid)', lineHeight: 1.4 }}>
-              Disponível: <strong>{Math.max(0, Number(char.inspiracao) || 0)}</strong>. Ao ativar, a próxima rolagem desta aba recebe <strong>+1</strong> e consome 1 Inspiração. Valores máximos naturais continuam marcados no dado.
+              Disponível: <strong>{Math.max(0, Number(char.inspiracao) || 0)}</strong>. Ao ativar, a próxima rolagem desta aba recebe <strong>+{INSPIRATION_TABLE_RULE.bonus}</strong> e consome 1 Inspiração. Valores máximos naturais continuam marcados no dado.
             </div>
           </div>
         </div>
@@ -462,7 +632,23 @@ export default function TabDados({ char, update, derived, spendTurnAction }) {
                 ))}
                 {result.inspirationUsed && (
                   <div style={{ marginTop: 6, fontSize: '0.86rem', color: 'var(--gold-dark)', fontFamily: 'var(--font-heading)' }}>
-                    ✦ Inspiração: {result.baseTotal} + {result.inspirationBonus || 1} = {result.total}
+                    ✦ Inspiração: {result.baseTotal} + {result.inspirationBonus ?? INSPIRATION_TABLE_RULE.bonus} = {result.total}
+                  </div>
+                )}
+                {result.type === 'skill-test' && (
+                  <div className="skill-result-meta">
+                    <strong>{result.skillName}</strong> · {result.skillAttribute} {result.skillModifier >= 0 ? '+' : ''}{result.skillModifier}
+                    {result.initiativeBonus ? ` · Luta +${result.initiativeBonus}` : ''}
+                    {result.skillAdjustment ? ` · ajuste ${result.skillAdjustment >= 0 ? '+' : ''}${result.skillAdjustment}` : ''}
+                    <span>{result.skillProficient ? `Proficiência: ${(result.skillProficiencySources || []).join(' + ')}` : 'Sem proficiência'}</span>
+                    {result.untrainedDisadvantage && <span className="skill-result-warning">Desvantagem prevista pelo v6; valor definido pela mesa.</span>}
+                  </div>
+                )}
+                {result.type === 'death-save' && (
+                  <div className={`death-save-result ${result.deathSaveSuccess ? 'success' : 'failure'} ${result.deathSaveResolution || ''}`}>
+                    <strong>{result.deathSaveResolution === 'recovered' ? `${DEATH_SAVE_TABLE_RULE.successesToRecover} SUCESSOS · ${DEATH_SAVE_TABLE_RULE.recoveryHp} HP RECUPERADO` : result.deathSaveResolution === 'dead' ? `${DEATH_SAVE_TABLE_RULE.failuresToDie} FALHAS · MORTE` : result.deathSaveSuccess ? 'SUCESSO' : 'FALHA'}</strong>
+                    <span>Sucessos {result.deathSaveSuccesses}/{DEATH_SAVE_TABLE_RULE.successesToRecover} · Falhas {result.deathSaveFailures}/{DEATH_SAVE_TABLE_RULE.failuresToDie}</span>
+                    <small>Teste natural: {DEATH_SAVE_TABLE_RULE.die}, sem modificadores.</small>
                   </div>
                 )}
                 {result.fatiguePenaltyApplied && (

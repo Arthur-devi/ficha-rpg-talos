@@ -1,13 +1,27 @@
 import { useState } from 'react';
 import { ORIGENS, SHIKATAS, PROFISSOES, TENDENCIAS, getProfissaoData } from '../data/system';
+import { DEFAULT_ORIGIN_STATE } from '../data/originRuntime';
+import OriginRuntimePanel from './OriginRuntimePanel';
+import { requirementForShikata } from '../data/multiclassRuntime';
+import { professionChoiceSpec } from '../data/skillRuntime';
 
-export default function TabIdentidade({ char, update, onLevelUp }) {
+export default function TabIdentidade({ char, update, onLevelUp, learnShikata, setActiveShikata, setShikataLevel, chooseSubclass, derived, useOriginAbility, attemptGuardianRevestimento, rollThunganItem, setWerewolfForm, clearMetamorphForm, applyVampireLifesteal }) {
   const [levelUpMessage, setLevelUpMessage] = useState('');
+  const [multiclassCandidate, setMulticlassCandidate] = useState('');
+  const [multiclassConfirmed, setMulticlassConfirmed] = useState(false);
+  const [multiclassMessage, setMulticlassMessage] = useState('');
   const origemData = ORIGENS.find(o => o.id === char.origem);
   const shikataData = SHIKATAS.find(s => s.id === char.shikata);
+  const activeShikataLevel = Math.max(1, Number(derived.activeShikataLevel) || 1);
+  const learnedShikatas = derived.learnedShikatas || [];
+  const learnedIds = new Set((derived.learnedShikataIds || []));
+  const unlearnedShikatas = SHIKATAS.filter(s => !learnedIds.has(s.id));
   const profissaoData = getProfissaoData(char.profissao);
+  const professionChoice = professionChoiceSpec(char.profissao);
+  const professionState = char.professionState || { oficioEspecialidades: [], oficioEspecialidade: '', atuacaoEspecialidade: '' };
   const handleOrigemChange = (value) => {
     update('origem', value);
+    update('originState', { ...DEFAULT_ORIGIN_STATE, metamorphForms: DEFAULT_ORIGIN_STATE.metamorphForms.map(form => ({ ...form, effects: {} })) });
     update('deslocamento', 0);
     update('limiteCansaco', 0);
   };
@@ -34,27 +48,26 @@ export default function TabIdentidade({ char, update, onLevelUp }) {
 
           <div style={{ marginTop: 12 }} className="grid3">
             <div className="field">
-              <label>Nível</label>
+              <label>Nível acumulado</label>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <input type="number" min="1" max="30" value={char.nivel}
-                  onChange={e => update('nivel', Math.max(1, Number(e.target.value)))}
-                  style={{ width: 78 }} />
+                <input type="number" value={char.nivel} readOnly style={{ width: 78 }} title="Soma dos níveis das Shikatas aprendidas" />
                 <button
                   className="btn btn-primary btn-sm"
                   type="button"
+                  disabled={!char.shikata}
                   onClick={() => {
                     const result = onLevelUp?.();
                     if (!result) return;
                     setLevelUpMessage(result.ok
-                      ? `Nível ${result.nextLevel}: +${result.pontosConcedidos} pontos distributivos. Role a vida na aba Dados.`
+                      ? `${shikataData?.name || 'Shikata'} Nv. ${result.nextLevel}: +${result.pontosConcedidos} pontos distributivos${result.nextLevel > 1 ? '. Role a vida na aba Dados.' : '.'}`
                       : result.message);
                   }}
                 >
-                  ↑ Subir de nível
+                  ↑ Evoluir {shikataData?.name || 'Shikata'}
                 </button>
               </div>
               <div style={{ marginTop: 5, fontSize: '0.7rem', color: 'var(--ink-faded)', lineHeight: 1.35 }}>
-                O campo numérico continua disponível para ajustes manuais. O botão aplica a evolução TALOS: +1 nível e +2 pontos distributivos.
+                No multiclasse, cada Shikata possui nível independente. O nível acumulado é a soma para referência geral; o botão evolui apenas a Shikata ativa.
               </div>
               {levelUpMessage && (
                 <div style={{ marginTop: 6, fontSize: '0.72rem', color: levelUpMessage.includes('Selecione') ? '#b91c1c' : '#166534', fontFamily: 'var(--font-heading)', lineHeight: 1.35 }}>
@@ -108,6 +121,64 @@ export default function TabIdentidade({ char, update, onLevelUp }) {
             </div>
           )}
 
+          {professionChoice && (
+            <div className="profession-choice-panel">
+              <div className="profession-choice-title">
+                <span>✦ ESCOLHA DA PROFISSÃO</span>
+                <strong>{professionChoice.label}</strong>
+              </div>
+
+              {professionChoice.type === 'oficio-multi' && (
+                <div className="profession-choice-options">
+                  {professionChoice.options.map(option => {
+                    const selected = (professionState.oficioEspecialidades || []).includes(option);
+                    const maxed = !selected && (professionState.oficioEspecialidades || []).length >= professionChoice.max;
+                    return (
+                      <label key={option} className={`profession-choice-check ${selected ? 'selected' : ''} ${maxed ? 'disabled' : ''}`}>
+                        <input
+                          type="checkbox"
+                          checked={selected}
+                          disabled={maxed}
+                          onChange={() => {
+                            const current = professionState.oficioEspecialidades || [];
+                            const next = selected ? current.filter(item => item !== option) : [...current, option].slice(0, professionChoice.max);
+                            update('professionState.oficioEspecialidades', next);
+                          }}
+                        />
+                        <span>{option}</span>
+                      </label>
+                    );
+                  })}
+                  <small>{(professionState.oficioEspecialidades || []).length}/{professionChoice.max} escolhidos.</small>
+                </div>
+              )}
+
+              {professionChoice.type === 'oficio-single' && (
+                <select value={professionState.oficioEspecialidade || ''} onChange={e => update('professionState.oficioEspecialidade', e.target.value)}>
+                  <option value="">Escolha a especialidade...</option>
+                  {professionChoice.options.map(option => <option key={option} value={option}>{option}</option>)}
+                </select>
+              )}
+
+              {professionChoice.type === 'atuacao-single' && (
+                <select value={professionState.atuacaoEspecialidade || ''} onChange={e => update('professionState.atuacaoEspecialidade', e.target.value)}>
+                  <option value="">Escolha a variação...</option>
+                  {professionChoice.options.map(option => <option key={option} value={option}>{option}</option>)}
+                </select>
+              )}
+
+              {professionChoice.type === 'oficio-fixed' && (
+                <div className="profession-fixed-choice">{professionChoice.value}</div>
+              )}
+
+              {professionChoice.type === 'amnestic' && (
+                <div className="profession-amnestic-note">Use as perícias manuais da aba <strong>Atributos</strong> conforme o passado do personagem for revelado pelo Mestre.</div>
+              )}
+
+              <small className="profession-choice-note">{professionChoice.note}</small>
+            </div>
+          )}
+
           <div style={{ marginTop: 12 }} className="grid2">
             <div className="field">
               <label>Deus / Divindade (Paladino)</label>
@@ -152,8 +223,10 @@ export default function TabIdentidade({ char, update, onLevelUp }) {
                 ))}
               </div>
               <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: '0.82rem', color: 'var(--ink-mid)' }}>
-                <span>🏃 Deslocamento: <strong>{origemData.deslocamento}sqm</strong></span>
-                <span>⚡ Limite cansaço: <strong>{origemData.limiteCansaco}</strong></span>
+                <span>🏃 Deslocamento: <strong>{origemData.deslocamento == null ? 'Não informado no v6' : `${origemData.deslocamento}sqm`}</strong></span>
+                <span>⚡ Limite cansaço: <strong>{origemData.id === 'meio-orc' ? 'Dinâmico pela Fusão' : origemData.limiteCansaco == null ? 'Não informado no v6' : origemData.limiteCansaco}</strong></span>
+                {origemData.altura && <span>📏 Altura média: <strong>{origemData.altura}</strong></span>}
+                {origemData.carga && <span>🎒 Carga: <strong>{origemData.carga}</strong></span>}
               </div>
               <div style={{ padding: '8px 12px', background: 'rgba(253,246,227,0.6)', border: '1px solid var(--parch-300)', borderRadius: 'var(--radius-sm)' }}>
                 <span style={{ fontFamily: 'var(--font-heading)', fontSize: '0.7rem', color: 'var(--ink-light)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>Habilidade Única</span>
@@ -164,33 +237,93 @@ export default function TabIdentidade({ char, update, onLevelUp }) {
         </div>
       </div>
 
+      {origemData && (
+        <OriginRuntimePanel
+          char={char}
+          derived={derived}
+          update={update}
+          useOriginAbility={useOriginAbility}
+          attemptGuardianRevestimento={attemptGuardianRevestimento}
+          rollThunganItem={rollThunganItem}
+          setWerewolfForm={setWerewolfForm}
+          clearMetamorphForm={clearMetamorphForm}
+          applyVampireLifesteal={applyVampireLifesteal}
+        />
+      )}
+
       {/* Shikata */}
       <div className="card">
         <div className="card-header">
           <span>⚔️</span>
-          <h3>Shikata (Classe)</h3>
+          <h3>Shikatas & Multiclasse</h3>
         </div>
         <div className="card-body">
-          <div className="grid2" style={{ marginBottom: 12 }}>
+          <div className="grid3" style={{ marginBottom: 12 }}>
             <div className="field">
-              <label>Shikata</label>
-              <select value={char.shikata} onChange={e => { update('shikata', e.target.value); update('subclasse', ''); }}>
-                <option value="">Selecione sua classe...</option>
-                {SHIKATAS.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              <label>Shikata ativa</label>
+              <select
+                value={char.shikata}
+                onChange={e => {
+                  const id = e.target.value;
+                  if (!id) return;
+                  if (learnedIds.has(id)) setActiveShikata?.(id);
+                  else learnShikata?.(id);
+                }}
+              >
+                <option value="">Selecione sua Shikata...</option>
+                {(learnedShikatas.length ? learnedShikatas : SHIKATAS).map(s => (
+                  <option key={s.id} value={s.id}>{s.name}{learnedShikatas.length ? ` — Nv. ${s.nivel}` : ''}</option>
+                ))}
               </select>
+              <small>Trocar a Shikata ativa muda apenas a classe exibida/operada. As demais continuam aprendidas.</small>
             </div>
+
+            <div className="field">
+              <label>Nível da Shikata ativa</label>
+              <input
+                type="number"
+                min="1"
+                max="30"
+                value={char.shikata ? activeShikataLevel : 1}
+                disabled={!char.shikata}
+                onChange={e => char.shikata && setShikataLevel?.(char.shikata, Number(e.target.value))}
+              />
+              <small>Ajuste manual não concede pontos nem cria rolagem de HP. Para evolução normal use o botão “Evoluir”.</small>
+            </div>
+
             <div className="field">
               <label>Subclasse {shikataData?.subclasseNivel ? `(Nível ${shikataData.subclasseNivel}+)` : ''}</label>
-              <select value={char.subclasse} onChange={e => update('subclasse', e.target.value)}
-                disabled={!shikataData || shikataData.subclasses.length === 0 || char.nivel < (shikataData?.subclasseNivel || 99)}>
-                <option value="">{shikataData && char.nivel >= (shikataData?.subclasseNivel || 99) ? 'Escolha subclasse...' : shikataData ? `Disponível no nível ${shikataData.subclasseNivel}` : 'Selecione shikata primeiro'}</option>
+              <select
+                value={derived.activeSubclass || ''}
+                onChange={e => char.shikata && chooseSubclass?.(char.shikata, e.target.value)}
+                disabled={!shikataData || shikataData.subclasses.length === 0 || activeShikataLevel < (shikataData?.subclasseNivel || 99)}
+              >
+                <option value="">{shikataData && activeShikataLevel >= (shikataData?.subclasseNivel || 99) ? 'Escolha subclasse...' : shikataData ? `Disponível no nível ${shikataData.subclasseNivel}` : 'Selecione Shikata primeiro'}</option>
                 {shikataData?.subclasses.map(sc => <option key={sc} value={sc}>{sc}</option>)}
               </select>
+              <small>Ao atingir o nível de especialização pela evolução normal, a escolha também aparece em uma Tela de Evento.</small>
             </div>
           </div>
 
+          {learnedShikatas.length > 0 && (
+            <div className="multiclass-learned-strip">
+              {learnedShikatas.map(item => (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={`multiclass-learned-chip ${char.shikata === item.id ? 'active' : ''}`}
+                  onClick={() => setActiveShikata?.(item.id)}
+                >
+                  <strong>{item.name}</strong>
+                  <span>Nv. {item.nivel}</span>
+                  {item.subclasse && <small>{item.subclasse}</small>}
+                </button>
+              ))}
+            </div>
+          )}
+
           {shikataData && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
               <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: '0.82rem', color: 'var(--ink-mid)' }}>
                 <span>🎲 Dado de vida pós nv.1: <strong>{shikataData.dadoVida}</strong></span>
                 <span>📊 Modificador: <strong>{shikataData.modificador}</strong></span>
@@ -200,6 +333,60 @@ export default function TabIdentidade({ char, update, onLevelUp }) {
               <div style={{ padding: '6px 12px', background: 'rgba(253,246,227,0.6)', border: '1px solid var(--parch-300)', borderRadius: 'var(--radius-sm)', fontSize: '0.78rem', color: 'var(--ink-light)' }}>
                 ⚡ Poder: {shikataData.poder}
               </div>
+            </div>
+          )}
+
+          {learnedShikatas.length > 0 && unlearnedShikatas.length > 0 && (
+            <div className="multiclass-panel">
+              <div className="multiclass-panel-title">
+                <div>
+                  <span>✦ MULTICLASSE</span>
+                  <strong>Aprender outra Shikata</strong>
+                </div>
+                <small>A ficha não tenta adivinhar se o requisito narrativo foi cumprido; o jogador confirma conforme a mesa.</small>
+              </div>
+              <div className="grid2">
+                <div className="field">
+                  <label>Nova Shikata</label>
+                  <select value={multiclassCandidate} onChange={e => { setMulticlassCandidate(e.target.value); setMulticlassConfirmed(false); setMulticlassMessage(''); }}>
+                    <option value="">Selecione...</option>
+                    {unlearnedShikatas.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
+                  </select>
+                </div>
+                <div className="multiclass-requirement">
+                  <span>REQUISITO TALOS v6</span>
+                  <strong>{multiclassCandidate ? requirementForShikata(multiclassCandidate) : 'Selecione uma Shikata para consultar o requisito.'}</strong>
+                </div>
+              </div>
+              {multiclassCandidate && (
+                <label className="multiclass-confirm">
+                  <input type="checkbox" checked={multiclassConfirmed} onChange={e => setMulticlassConfirmed(e.target.checked)} />
+                  <span>Confirmo que o requisito foi cumprido/validado pelo Mestre.</span>
+                </label>
+              )}
+              <div className="multiclass-actions">
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  disabled={!multiclassCandidate || !multiclassConfirmed}
+                  onClick={() => {
+                    const result = learnShikata?.(multiclassCandidate);
+                    if (!result) return;
+                    setMulticlassMessage(result.ok ? `${result.name} aprendida no nível 1 e definida como Shikata ativa.` : result.message);
+                    if (result.ok) { setMulticlassCandidate(''); setMulticlassConfirmed(false); }
+                  }}
+                >
+                  ✦ Aprender Shikata
+                </button>
+                <small>Aprender uma nova Shikata inicia essa classe no Nv. 1. A rolagem de vida ocorre somente ao evoluí-la para níveis pós-Nv.1.</small>
+              </div>
+              {multiclassMessage && <div className="multiclass-message">{multiclassMessage}</div>}
+            </div>
+          )}
+
+          {learnedShikatas.length > 1 && (
+            <div className="multiclass-rule-note">
+              <strong>Regra de acerto multiclasse ativa:</strong> a partir da segunda Shikata, a aba D20 Dados oferece os modificadores das Shikatas aprendidas como alternativas. Eles não são somados entre si.
             </div>
           )}
         </div>

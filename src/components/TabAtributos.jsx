@@ -1,4 +1,7 @@
+import { useState } from 'react';
 import { ATTRIBUTES, PERICIAS_BY_ATTR, PERICIAS_INFO, getProfissaoData } from '../data/system';
+import { CONDITION_MARKERS, OFFICIAL_STATE_DEFS } from '../data/stateRuntime';
+import { INSPIRATION_TABLE_RULE } from '../data/tableRules';
 
 function signed(value) {
   return value > 0 ? `+${value}` : `${value || 0}`;
@@ -13,6 +16,7 @@ function AttrBox({
   originBonus = 0,
   itemBonus = 0,
   classBonus = 0,
+  stateBonus = 0,
   levelAllocation = 0,
   canSpendPoint = false,
   onSpendPoint,
@@ -54,6 +58,11 @@ function AttrBox({
           {classBonus > 0 ? '+' : ''}{classBonus} classe
         </div>
       )}
+      {stateBonus !== 0 && (
+        <div style={{ fontSize: '0.58rem', color: '#0f766e', marginTop: 3, fontFamily: 'var(--font-heading)', lineHeight: 1.1 }}>
+          {stateBonus > 0 ? '+' : ''}{stateBonus} estado
+        </div>
+      )}
       {levelAllocation > 0 && (
         <div style={{ fontSize: '0.58rem', color: '#7c3aed', marginTop: 3, fontFamily: 'var(--font-heading)', lineHeight: 1.1 }}>
           +{levelAllocation} por evolução
@@ -85,13 +94,15 @@ function AttrBox({
   );
 }
 
-export default function TabAtributos({ char, update, updateAttr, derived, toggleEstado, togglePericia, spendAttributePoint, refundAttributePoint, setCansaco }) {
+export default function TabAtributos({ char, update, updateAttr, derived, toggleEstado, consumeConcentration, togglePericia, spendAttributePoint, refundAttributePoint, setCansaco }) {
+  const [stateMessage, setStateMessage] = useState('');
   const hpMaxTotal = derived.hpMaxTotal || char.hpMax;
   const hpPct = Math.max(0, Math.min(100, (char.hpAtual / hpMaxTotal) * 100));
   const lockedDeslocamento = derived.originDeslocamentoBase + derived.deslocamentoBonus + derived.deslocamentoItemBonus;
   const lockedLimiteCansaco = derived.originLimiteCansacoBase + derived.limiteCansacoBonus;
   const profissaoData = getProfissaoData(char.profissao);
   const periciasProfissao = new Set(profissaoData?.pericias || []);
+  const periciasOrigem = new Set(derived.originProficiencies || []);
 
   return (
     <div className="stack">
@@ -149,7 +160,7 @@ export default function TabAtributos({ char, update, updateAttr, derived, toggle
                   onChange={e => update('deslocamento', Math.max(0, Number(e.target.value) - lockedDeslocamento))}
                   style={{ width: 80 }} />
                 <div style={{ fontSize: '0.72rem', color: 'var(--ink-faded)', fontFamily: 'var(--font-heading)' }}>
-                  Origem {derived.originDeslocamentoBase} + manual {derived.manualDeslocamento} + DES {derived.deslocamentoBonus} + itens {signed(derived.deslocamentoItemBonus)} = {derived.deslocamentoTotal}
+                  {derived.originMovementSpecified ? `Origem ${derived.originDeslocamentoBase}` : 'Origem: não informado no v6'} + manual {derived.manualDeslocamento} + DES {derived.deslocamentoBonus} + itens {signed(derived.deslocamentoItemBonus)} = {derived.deslocamentoTotal}
                 </div>
               </div>
               <div>
@@ -171,7 +182,7 @@ export default function TabAtributos({ char, update, updateAttr, derived, toggle
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 5 }}>
                   <div style={{ fontSize: '0.72rem', color: 'var(--ink-faded)', fontFamily: 'var(--font-heading)' }}>
-                    Origem {derived.originLimiteCansacoBase} + manual {derived.manualLimiteCansaco} + CON {derived.limiteCansacoBonus} = {derived.limiteCansacoTotal}
+                    {derived.originFatigueSpecified ? `Origem ${derived.originLimiteCansacoBase}` : char.origem === 'meio-orc' ? 'Origem: escolha a Fusão' : 'Origem: não informado no v6'} + manual {derived.manualLimiteCansaco} + CON {derived.limiteCansacoBonus} = {derived.limiteCansacoTotal}
                   </div>
                   {derived.isCansado && <span className="badge fatigue-danger">CANSADO — bônus de acerto da Shikata desativado</span>}
                 </div>
@@ -179,11 +190,14 @@ export default function TabAtributos({ char, update, updateAttr, derived, toggle
                   Cada uso de habilidade consome 1 ponto deste limite. Ao atingir o máximo, habilidades continuam disponíveis, mas o modificador de acerto da classe deixa de ser somado. Descanso curto recupera o estado.
                 </div>
               </div>
-              <div>
+              <div className="inspiration-control">
                 <label>Inspiração</label>
-                <input type="number" value={char.inspiracao} min={0}
-                  onChange={e => update('inspiracao', Number(e.target.value))}
-                  style={{ width: 80 }} />
+                <div className="inspiration-counter">
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => update('inspiracao', Math.max(0, (Number(char.inspiracao) || 0) - 1))} disabled={(Number(char.inspiracao) || 0) <= 0}>−</button>
+                  <strong>{Math.max(0, Number(char.inspiracao) || 0)}</strong>
+                  <button type="button" className="btn btn-primary btn-sm" onClick={() => update('inspiracao', Math.max(0, Number(char.inspiracao) || 0) + 1)}>+</button>
+                </div>
+                <small>Acumula normalmente. Nesta ficha, conforme a regra definida pela mesa, gastar 1 Inspiração concede <strong>+{INSPIRATION_TABLE_RULE.bonus} na rolagem</strong>.</small>
               </div>
             </div>
           </div>
@@ -218,7 +232,8 @@ export default function TabAtributos({ char, update, updateAttr, derived, toggle
               const originBonus = derived.originAttrBonuses?.[attr.key] || 0;
               const itemBonus = derived.itemAttrBonuses?.[attr.key] || 0;
               const classBonus = derived.classAttrBonuses?.[attr.key] || 0;
-              const attributeLockedBonus = originBonus + itemBonus + classBonus;
+              const stateBonus = derived.stateAttrBonuses?.[attr.key] || 0;
+              const attributeLockedBonus = originBonus + itemBonus + classBonus + stateBonus;
               // Valor exibido = base + origem + itens. Magia ainda soma INT÷2.
               const displayValue = isMagia ? derived.magiaTotal : derived.attrsTotal[attr.key];
               const lockedBonus = isMagia ? derived.magiaFromInt + attributeLockedBonus : attributeLockedBonus;
@@ -242,8 +257,9 @@ export default function TabAtributos({ char, update, updateAttr, derived, toggle
                   originBonus={originBonus}
                   itemBonus={itemBonus}
                   classBonus={classBonus}
+                  stateBonus={stateBonus}
                   levelAllocation={char.pontosDistribuidosNivel?.[attr.key] || 0}
-                  canSpendPoint={(char.pontosDistributivos || 0) > 0}
+                  canSpendPoint={(char.pontosDistributivos || 0) > 0 && !(char.origem === 'tita' && attr.key === 'carisma')}
                   onSpendPoint={() => spendAttributePoint?.(attr.key)}
                   onRefundPoint={() => refundAttributePoint?.(attr.key)}
                 />
@@ -295,20 +311,22 @@ export default function TabAtributos({ char, update, updateAttr, derived, toggle
                   </div>
                   {pericias.map(p => {
                     const lockedByProfession = periciasProfissao.has(p);
-                    const checked = lockedByProfession || char.pericias.includes(p);
+                    const lockedByOrigin = periciasOrigem.has(p);
+                    const locked = lockedByProfession || lockedByOrigin;
+                    const checked = locked || char.pericias.includes(p);
                     const inputId = `pericia-${attrKey}-${p.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}`;
                     return (
-                      <div key={p} className={`pericia-item ${lockedByProfession ? 'locked' : ''}`}>
+                      <div key={p} className={`pericia-item ${locked ? 'locked' : ''}`}>
                         <input
                           id={inputId}
                           type="checkbox"
                           checked={checked}
-                          disabled={lockedByProfession}
+                          disabled={locked}
                           onChange={() => {
-                            if (!lockedByProfession) togglePericia(p);
+                            if (!locked) togglePericia(p);
                           }}
                         />
-                        <label htmlFor={inputId} className="pericia-name" title={lockedByProfession ? `Perícia fixa da profissão: ${profissaoData.name}` : undefined}>
+                        <label htmlFor={inputId} className="pericia-name" title={lockedByProfession ? `Perícia fixa da profissão: ${profissaoData.name}` : lockedByOrigin ? 'Proficiência escolhida pela Origem' : undefined}>
                           {p}
                         </label>
                         <span className="pericia-help" tabIndex={0} aria-label={`Resumo de ${p}`}>
@@ -319,6 +337,7 @@ export default function TabAtributos({ char, update, updateAttr, derived, toggle
                           </span>
                         </span>
                         {lockedByProfession && <span className="pericia-locked-tag">Profissão</span>}
+                        {!lockedByProfession && lockedByOrigin && <span className="pericia-locked-tag">Origem</span>}
                       </div>
                     );
                   })}
@@ -330,46 +349,115 @@ export default function TabAtributos({ char, update, updateAttr, derived, toggle
       </div>
 
       {/* Estados */}
-      <div className="card">
-        <div className="card-header"><span>⚡</span><h3>Estados Ativos</h3></div>
-        <div className="card-body">
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            {[
-              { id: 'imparavel', name: 'IMPARÁVEL' },
-              { id: 'concentracao', name: 'CONCENTRAÇÃO' },
-              { id: 'cansado', name: 'CANSADO' },
-              { id: 'envenenado', name: 'ENVENENADO' },
-              { id: 'congelado', name: 'CONGELADO' },
-              { id: 'sangrando', name: 'SANGRANDO' },
-              { id: 'atordoado', name: 'ATORDOADO' },
-              { id: 'morrendo', name: 'MORRENDO' },
-            ].map(e => {
-              const autoCansado = e.id === 'cansado';
-              const active = autoCansado ? derived.isCansado : char.estados.includes(e.id);
-              return (
-                <button key={e.id} className={`estado-tag ${active ? 'active' : ''}`}
-                  disabled={autoCansado}
-                  title={autoCansado ? 'Estado controlado automaticamente pelo Limite de Cansaço.' : undefined}
-                  onClick={() => !autoCansado && toggleEstado(e.id)}>
-                  {e.name}{autoCansado ? ' • AUTO' : ''}
-                </button>
-              );
-            })}
+      <div className="card states-card">
+        <div className="card-header"><span>⚡</span><h3>Estados & Condições</h3></div>
+        <div className="card-body stack">
+          <div>
+            <div className="state-section-title">Estados oficiais TALOS v6</div>
+            <div className="official-state-grid">
+              {OFFICIAL_STATE_DEFS.map(state => {
+                const active = state.id === 'cansado' ? derived.isCansado : (char.estados || []).includes(state.id);
+                return (
+                  <div key={state.id} className={`official-state-card ${active ? 'active' : ''} ${state.id === 'cansado' && active ? 'danger' : ''}`}>
+                    <div className="official-state-head">
+                      <strong>{state.name}</strong>
+                      {state.id === 'cansado' ? (
+                        <span className={`state-status-pill ${active ? 'on' : ''}`}>{active ? 'AUTO · ATIVO' : 'AUTO'}</span>
+                      ) : (
+                        <button
+                          type="button"
+                          className={`btn btn-sm ${active ? 'btn-danger' : 'btn-secondary'}`}
+                          onClick={() => {
+                            const result = toggleEstado?.(state.id);
+                            if (result?.message) setStateMessage(result.message);
+                          }}
+                        >
+                          {active ? 'Desativar' : 'Ativar'}
+                        </button>
+                      )}
+                    </div>
+                    <p>{state.desc}</p>
+                    {state.id === 'concentracao' && active && (
+                      <div className="state-effect-row">
+                        <span className="badge state-positive">+10 DEFESA ATIVO</span>
+                        <button
+                          type="button"
+                          className="btn btn-secondary btn-sm"
+                          onClick={() => {
+                            const result = consumeConcentration?.();
+                            if (result?.message) setStateMessage(result.message);
+                          }}
+                        >
+                          Registrar 1º ataque recebido
+                        </button>
+                      </div>
+                    )}
+                    {state.id === 'imparavel' && active && (
+                      <div className="state-effect-row">
+                        <span className="badge state-positive">IMUNE: ATORDOADO</span>
+                        <span className="badge state-positive">IMUNE: ENRAIZADO</span>
+                        <span className="badge state-positive">IMUNE: CONGELADO</span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
-          <div style={{ marginTop: 10 }}>
-            <label>Estado personalizado</label>
+
+          <div>
+            <div className="state-section-title">Marcadores de condição</div>
+            <p className="state-section-note">O v6 usa estes termos em várias habilidades, mas não fornece um efeito central único para todos eles. A ficha os registra sem inventar dano, duração ou perda de ações. IMPARÁVEL bloqueia apenas as imunidades citadas explicitamente.</p>
+            <div className="condition-marker-row">
+              {CONDITION_MARKERS.map(condition => {
+                const active = (char.estados || []).includes(condition.id);
+                const immune = derived.stateEffects?.imparavel && ['atordoado', 'enraizado', 'congelado'].includes(condition.id);
+                return (
+                  <button
+                    key={condition.id}
+                    type="button"
+                    className={`estado-tag ${active ? 'active' : ''} ${immune ? 'immune' : ''}`}
+                    onClick={() => {
+                      const result = toggleEstado?.(condition.id);
+                      if (result?.message) setStateMessage(result.message);
+                    }}
+                    title={immune ? 'Bloqueado por IMPARÁVEL.' : 'Marcador manual de condição.'}
+                  >
+                    {condition.name}{immune ? ' · IMUNE' : ''}
+                  </button>
+                );
+              })}
+              <span className={`estado-tag ${(derived.isMorrendo || derived.isDead) ? 'active dying' : ''}`} title="MORRENDO é automático em HP 0 ou menos. MORTE exige 3 falhas na regra da mesa.">
+                {derived.isDead ? 'MORTO · 3 FALHAS' : `MORRENDO · AUTO ${derived.isMorrendo ? `✓ ${derived.deathSaveState?.successes || 0}/3 · × ${derived.deathSaveState?.failures || 0}/3` : ''}`}
+              </span>
+            </div>
+          </div>
+
+          <div>
+            <label>Estado / condição personalizada</label>
             <div style={{ display: 'flex', gap: 8 }}>
               <input placeholder="Ex: Amaldiçoado..." id="custom-estado"
-                onKeyDown={e => { if (e.key === 'Enter' && e.target.value) { toggleEstado(e.target.value); e.target.value = ''; } }} />
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && e.target.value) {
+                    const result = toggleEstado?.(e.target.value);
+                    if (result?.message) setStateMessage(result.message);
+                    e.target.value = '';
+                  }
+                }} />
               <button className="btn btn-secondary btn-sm" onClick={() => {
                 const el = document.getElementById('custom-estado');
-                if (el.value) { toggleEstado(el.value); el.value = ''; }
+                if (el?.value) {
+                  const result = toggleEstado?.(el.value);
+                  if (result?.message) setStateMessage(result.message);
+                  el.value = '';
+                }
               }}>+ Adicionar</button>
             </div>
           </div>
-          {char.estados.filter(e => !['imparavel','concentracao','cansado','envenenado','congelado','sangrando','atordoado','morrendo'].includes(e)).map(e => (
-            <span key={e} className="estado-tag active" style={{ marginTop: 4 }} onClick={() => toggleEstado(e)}>{e}</span>
+          {(char.estados || []).filter(state => !['imparavel','concentracao','cansado','envenenado','congelado','enraizado','sangrando','atordoado','morrendo'].includes(state)).map(state => (
+            <span key={state} className="estado-tag active" style={{ marginTop: 4 }} onClick={() => toggleEstado?.(state)}>{state}</span>
           ))}
+          {stateMessage && <div className="state-runtime-message">{stateMessage}</div>}
         </div>
       </div>
 

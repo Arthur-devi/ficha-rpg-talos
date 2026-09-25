@@ -247,6 +247,10 @@ export function getOfficialAbilityDamageSpec(shikataId, ability, level) {
   const evolutionTexts = activeEvolutionTexts(shikataId, ability.nome, level);
   const evolutionSpec = buildDamageSpec(evolutionTexts, 'evolucao', true, [ability.desc || '']);
   if (evolutionSpec) return evolutionSpec;
+  // Se a tabela v6 declara explicitamente Dano: — no nível vigente, não volte
+  // para o dano-base do texto. O traço significa que a fonte não fornece um
+  // novo valor seguro para automatização naquele marco (ex.: Hemomante nv.17).
+  if (evolutionTexts.some(text => /\bdano\s*:\s*[—-](?:\s*\||\s*$)/i.test(String(text || '')))) return null;
   const activeDescription = activeDescriptionText(ability.desc || '', level);
   return buildDamageSpec([activeDescription], 'descricao', true, [ability.desc || '']);
 }

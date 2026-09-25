@@ -143,7 +143,13 @@ export default function TabMagias({ char, update, derived, registerAbilityUse, s
 
   const descansar = (type) => {
     const result = performRest?.(type);
-    if (result) setRestScene({ ...result, id: `${Date.now()}-${type}` });
+    if (!result) return;
+    if (result.ok === false) {
+      setRuntimeError(result.message || 'Não foi possível realizar o descanso.');
+      return;
+    }
+    setRuntimeError('');
+    setRestScene({ ...result, id: `${Date.now()}-${type}` });
   };
 
   const resetUsos = (id) => {

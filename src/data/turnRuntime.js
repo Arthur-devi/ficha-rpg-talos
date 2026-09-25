@@ -1,3 +1,4 @@
+import { getShikataLevel } from './multiclassRuntime.js';
 import { getEvolucao } from './evolucoes.js';
 
 export const ACTION_LABELS = {
@@ -109,10 +110,10 @@ export function getAbilityActionSpec(shikataId, ability, level) {
 }
 
 export function getBaseTurnEconomy(char) {
-  const level = Number(char?.nivel) || 1;
+  const ladinoLevel = getShikataLevel(char, 'ladino');
   const fullBase = 2;
-  // Maestria Tática: Ladino level 5 permanently gains +1 bonus action.
-  const bonusBase = 1 + (char?.shikata === 'ladino' && level >= 5 ? 1 : 0);
+  // Maestria Tática: qualquer personagem que tenha Ladino nv.5+ mantém +1 ação bônus.
+  const bonusBase = 1 + (ladinoLevel >= 5 ? 1 : 0);
   return { fullBase, bonusBase };
 }
 
@@ -124,6 +125,7 @@ function activeEffectBonus(turnEconomy, type) {
 
 export function getTurnEconomySnapshot(char) {
   const state = char?.turnEconomy || {};
+  const combatActive = Boolean(char?.abilityTimeline?.combatActive);
   const base = getBaseTurnEconomy(char);
   const fullAdjustment = Number(state.manualFullAdjustment) || 0;
   const bonusAdjustment = Number(state.manualBonusAdjustment) || 0;
@@ -135,6 +137,7 @@ export function getTurnEconomySnapshot(char) {
   const bonusSpent = Math.max(0, Math.min(bonusTotal, Number(state.bonusSpent) || 0));
 
   return {
+    combatActive,
     fullBase: base.fullBase,
     bonusBase: base.bonusBase,
     fullAdjustment,
@@ -153,6 +156,7 @@ export function getTurnEconomySnapshot(char) {
 }
 
 export function canSpendAction(char, actionOption) {
+  if (!char?.abilityTimeline?.combatActive) return { ok: true, outsideCombat: true };
   if (!actionOption || actionOption.type === 'free' || actionOption.type === 'reaction') {
     return { ok: true };
   }

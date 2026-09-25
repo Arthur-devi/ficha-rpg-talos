@@ -9,6 +9,7 @@ import TabInventario from './components/TabInventario';
 import TabMagias from './components/TabMagias';
 import TabNotas from './components/TabNotas';
 import TurnActionHud from './components/TurnActionHud';
+import SubclassEventOverlay from './components/SubclassEventOverlay';
 import { ORIGENS, SHIKATAS } from './data/system';
 
 const TABS = [
@@ -28,15 +29,30 @@ export default function App() {
     update,
     updateAttr,
     levelUp,
+    learnShikata,
+    setActiveShikata,
+    setShikataLevel,
+    chooseSubclass,
+    dismissSubclassEvent,
     spendAttributePoint,
     refundAttributePoint,
     setCansaco,
     registerAbilityUse,
     useOfficialAbility,
     resetOfficialAbilityUse,
+    startCombat,
+    endCombat,
     advanceAbilityPeriod,
     spendTurnAction,
     adjustTurnActions,
+    useOriginAbility,
+    attemptGuardianRevestimento,
+    rollThunganItem,
+    setWerewolfForm,
+    clearMetamorphForm,
+    applyVampireLifesteal,
+    rollDeathSave,
+    reviveCharacter,
     performRest,
     exportChar,
     importChar,
@@ -46,6 +62,7 @@ export default function App() {
     removeInventoryItem,
     equipItem,
     toggleEstado,
+    consumeConcentration,
     togglePericia,
     derived,
   } = useCharacter();
@@ -100,16 +117,29 @@ export default function App() {
         </div>
       </nav>
 
-      {derived.isCansado && (
-        <div className="global-fatigue-alert" role="alert" aria-live="assertive">
-          <span className="global-fatigue-alert-icon">!</span>
-          <strong>CANSADO</strong>
-          <span>BÔNUS DE ACERTO DA SHIKATA DESATIVADO</span>
-          <small>Cansaço {derived.cansacoAtual}/{derived.limiteCansacoTotal}</small>
+      {(derived.isMorrendo || derived.isDead || derived.isCansado || char.abilityTimeline?.combatActive) && (
+        <div className="runtime-sticky-stack">
+          {(derived.isMorrendo || derived.isDead) && (
+            <div className={`global-death-alert ${derived.isDead ? 'dead' : ''}`} role="alert" aria-live="assertive">
+              <span className="global-death-alert-icon">✚</span>
+              <strong>{derived.isDead ? 'MORTO' : 'MORRENDO'}</strong>
+              <span>{derived.isDead ? '3 FALHAS REGISTRADAS · MORTE CONFIRMADA' : 'TESTE DE VONTADE DISPONÍVEL · 1D20 NATURAL'}</span>
+              {!derived.isDead && <small>✓ {derived.deathSaveState?.successes || 0}/3 · × {derived.deathSaveState?.failures || 0}/3 · HP {char.hpAtual}/{hpMaxTotal}</small>}
+              {derived.isDead && <small>RESSURREIÇÃO EXPLÍCITA NECESSÁRIA</small>}
+              <button type="button" className="global-death-alert-action" onClick={() => setActiveTab('dados')}>{derived.isDead ? 'VER ESTADO' : 'GIRAR TESTE'}</button>
+            </div>
+          )}
+          {derived.isCansado && (
+            <div className="global-fatigue-alert" role="alert" aria-live="assertive">
+              <span className="global-fatigue-alert-icon">!</span>
+              <strong>CANSADO</strong>
+              <span>BÔNUS DE ACERTO DA SHIKATA DESATIVADO</span>
+              <small>Cansaço {derived.cansacoAtual}/{derived.limiteCansacoTotal}</small>
+            </div>
+          )}
+          <TurnActionHud char={char} derived={derived} spendTurnAction={spendTurnAction} adjustTurnActions={adjustTurnActions} />
         </div>
       )}
-
-      <TurnActionHud char={char} derived={derived} spendTurnAction={spendTurnAction} adjustTurnActions={adjustTurnActions} />
 
       {/* Page content */}
       <main className="page">
@@ -118,21 +148,27 @@ export default function App() {
           <div className="ornamental-header" style={{ marginBottom: 16 }}>
             <h1 style={{ color: 'var(--ink-dark)' }}>{char.name}</h1>
             <div style={{ fontFamily: 'var(--font-heading)', fontSize: '0.75rem', color: 'var(--ink-faded)', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: 4 }}>
-              {[char.origem && ORIGIN_NAME(char.origem), char.shikata && SHIKATA_NAME(char.shikata), char.nivel && `Nível ${char.nivel}`].filter(Boolean).join(' • ')}
+              {[char.origem && ORIGIN_NAME(char.origem), (derived.learnedShikatas || []).length > 1 ? (derived.learnedShikatas || []).map(item => `${item.name} ${item.nivel}`).join(' / ') : char.shikata && `${SHIKATA_NAME(char.shikata)} ${derived.activeShikataLevel || 1}`, char.nivel && `Nível acumulado ${char.nivel}`].filter(Boolean).join(' • ')}
             </div>
           </div>
         )}
 
         <section key={activeTab} className="tab-transition" aria-live="polite">
-          {activeTab === 'identidade' && <TabIdentidade char={char} update={update} onLevelUp={handleLevelUp} />}
-          {activeTab === 'atributos' && <TabAtributos char={char} update={update} updateAttr={updateAttr} derived={derived} toggleEstado={toggleEstado} togglePericia={togglePericia} spendAttributePoint={spendAttributePoint} refundAttributePoint={refundAttributePoint} setCansaco={setCansaco} />}
-          {activeTab === 'dados' && <TabDados char={char} update={update} derived={derived} spendTurnAction={spendTurnAction} />}
-          {activeTab === 'habilidades' && <TabHabilidades char={char} update={update} derived={derived} useOfficialAbility={useOfficialAbility} resetOfficialAbilityUse={resetOfficialAbilityUse} advanceAbilityPeriod={advanceAbilityPeriod} />}
+          {activeTab === 'identidade' && <TabIdentidade char={char} update={update} onLevelUp={handleLevelUp} learnShikata={learnShikata} setActiveShikata={setActiveShikata} setShikataLevel={setShikataLevel} chooseSubclass={chooseSubclass} derived={derived} useOriginAbility={useOriginAbility} attemptGuardianRevestimento={attemptGuardianRevestimento} rollThunganItem={rollThunganItem} setWerewolfForm={setWerewolfForm} clearMetamorphForm={clearMetamorphForm} applyVampireLifesteal={applyVampireLifesteal} />}
+          {activeTab === 'atributos' && <TabAtributos char={char} update={update} updateAttr={updateAttr} derived={derived} toggleEstado={toggleEstado} consumeConcentration={consumeConcentration} togglePericia={togglePericia} spendAttributePoint={spendAttributePoint} refundAttributePoint={refundAttributePoint} setCansaco={setCansaco} />}
+          {activeTab === 'dados' && <TabDados char={char} update={update} derived={derived} spendTurnAction={spendTurnAction} rollDeathSave={rollDeathSave} reviveCharacter={reviveCharacter} />}
+          {activeTab === 'habilidades' && <TabHabilidades char={char} update={update} derived={derived} chooseSubclass={chooseSubclass} useOfficialAbility={useOfficialAbility} resetOfficialAbilityUse={resetOfficialAbilityUse} advanceAbilityPeriod={advanceAbilityPeriod} startCombat={startCombat} endCombat={endCombat} />}
           {activeTab === 'inventario' && <TabInventario char={char} derived={derived} addInventoryItem={addInventoryItem} addCustomInventoryItem={addCustomInventoryItem} updateCustomInventoryItem={updateCustomInventoryItem} removeInventoryItem={removeInventoryItem} equipItem={equipItem} />}
           {activeTab === 'magias' && <TabMagias char={char} update={update} derived={derived} registerAbilityUse={registerAbilityUse} spendTurnAction={spendTurnAction} performRest={performRest} />}
           {activeTab === 'notas' && <TabNotas char={char} update={update} />}
         </section>
       </main>
+
+      <SubclassEventOverlay
+        event={char.pendingSubclassChoice}
+        onChoose={chooseSubclass}
+        onDismiss={dismissSubclassEvent}
+      />
 
       {/* Mobile bottom nav */}
       <div style={{

@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "sync:shikatas": "python scripts/extract_shikatas_v6.py",
+    "audit:talos": "node scripts/audit-talos.mjs"
   },
   "dependencies": {
     "react": "18.3.1",

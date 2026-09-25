@@ -21,7 +21,7 @@ export default function AbilityUseOverlay({ scene, onDone }) {
     const revealTimer = window.setTimeout(() => setRevealed(true), 620);
     const holdMs = scene.exhausted || scene.lifetimeExhausted ? 2350 : 1850;
     const closeTimer = window.setTimeout(() => setClosing(true), holdMs);
-    const doneTimer = window.setTimeout(() => onDoneRef.current?.(scene), holdMs + 480);
+    const doneTimer = window.setTimeout(() => onDoneRef.current?.(scene), holdMs + 400);
 
     return () => {
       window.clearTimeout(revealTimer);

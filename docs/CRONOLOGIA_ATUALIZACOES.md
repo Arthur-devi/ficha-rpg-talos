@@ -739,3 +739,357 @@ Transformar a economia de turno do TALOS v6 em regra operacional da ficha. O sis
 - Auditoria da estrutura atual de habilidades: 376 habilidades ativas/reação/bônus analisadas, sem erro do classificador; a maioria permanece ação completa e as exceções de bônus/reação/sem ação são tratadas pelo novo motor.
 - Nenhuma dependência npm nova foi adicionada.
 - O build Vite completo continua indisponível neste ambiente porque as dependências npm não estão integralmente disponíveis e a instalação externa excede o limite; o gate visual final permanece `npm install` + `npm run dev` no ambiente local já validado nos lotes anteriores.
+
+## Lote 6 — Origens v6 + Combate Explícito + HUD sticky
+
+### Objetivo
+Fechar a camada de Origens do TALOS v6 sem inventar valores ausentes e tornar a economia de ações do Lote 5 dependente de um combate explicitamente iniciado pelo jogador.
+
+### Combate agora é um estado real
+- `src/hooks/useCharacter.js`
+  - `abilityTimeline.combatActive` passa a controlar toda a economia de ações.
+  - Novo `startCombat()`:
+    - inicia um novo combate;
+    - abre o Turno 1;
+    - restaura a economia de ações;
+    - limpa usos por turno/combate quando aplicável;
+    - limpa efeitos de Origem encerrados com o combate anterior.
+  - Novo `endCombat()`:
+    - encerra o combate;
+    - desativa a economia de ações;
+    - encerra efeitos explicitamente limitados ao combate.
+  - Fora de combate, ataques/habilidades/Poderes continuam podendo controlar usos, custos e Cansaço, mas não gastam nem são bloqueados por ações completas/bônus.
+  - Migração de regras atualizada para versão 8; saves antigos entram fora de combate para evitar herdar uma sessão de ações inconsistente.
+- `src/components/TabHabilidades.jsx`
+  - Botão `⚔ INICIAR COMBATE` no Motor de Habilidades.
+  - Com combate ativo, o botão muda para `Encerrar combate`.
+  - `Novo turno` só fica disponível durante combate.
+  - `Novo dia`, `Nova semana` e `Novo mês` continuam válidos fora de combate.
+  - As transições cinematográficas informam início/fim do combate e ativação/desativação da economia de ações.
+- `src/components/TurnActionHud.jsx` + `src/App.jsx`
+  - HUD de ações só é renderizado durante combate ativo.
+  - HUD fica sticky logo abaixo do header e acompanha o scroll.
+  - Quando CANSADO também estiver ativo, alerta e HUD formam uma pilha sticky sem se sobrepor.
+  - Em mobile, a pilha continua abaixo do header superior.
+
+### Auditoria das 38 Origens
+- `src/data/system.js`
+  - 38/38 Origens revisadas contra o bloco `ORIGENS` do TALOS v6.
+  - Alturas foram registradas somente quando aparecem explicitamente na fonte.
+  - Valores não sustentados pela fonte atual foram removidos:
+    - Slime: Deslocamento não especificado.
+    - Lorv: Deslocamento e Limite de Cansaço não especificados.
+    - Kvaldir: Deslocamento e Limite de Cansaço não especificados nos blocos v6; a duplicação da Origem no documento foi preservada apenas como observação, sem criar uma segunda Origem na ficha.
+    - Meio-Orc: Limite de Cansaço deixou de ser fixo e agora depende da Fusão.
+- `src/data/originRuntime.js` (novo)
+  - Estado persistente específico das Origens.
+  - Escolhas permanentes, recursos, usos e fórmulas das habilidades de Origem.
+  - Resets por descanso/dia/combate e duração por turno quando a fonte permite automação inequívoca.
+  - Nenhum valor contextual do mestre é inventado.
+- `src/data/originEffects.js`
+  - Bônus/malefícios de Origem entram no cálculo final de atributos, HP, CA, Deslocamento e Cansaço.
+  - Efeitos condicionais são ativados apenas quando o jogador informa a condição correspondente.
+- `src/components/OriginRuntimePanel.jsx` (novo)
+  - Painel `Origem — Mecânicas v6` dentro de Identidade.
+  - Exibe escolhas, estados, habilidades e avisos da fonte conforme a Origem atual.
+  - Habilidades de Origem estruturadas usam os mesmos dados 3D da ficha quando há rolagem direta.
+
+### Origens com automação/estrutura específica
+- Humano: +2 Percepção, carga textual e 4 pontos de proficiência à escolha.
+- Drac: Invencibilidade 1x/descanso longo; durante combate mostra o turno de invulnerabilidade como efeito ativo.
+- Manchados: Olhos Escarlates evoluem por nível; níveis 1/2 numéricos são aplicados, nível 3/4+ preserva o efeito contextual.
+- Anão / Anão da Rocha: bônus numéricos automáticos; bônus de forja/mineração preservados como testes contextuais.
+- Crono: Quebra do Tempo 1x/descanso longo, com estado ativo por 1 turno em combate.
+- Elfo: Precisão 1x/descanso longo arma o próximo ataque como certeiro, sem rolar um d20 falso.
+- Elfo da Floresta: ambiente natural + cura de 10 HP por hora fora de combate.
+- Elfo Rubro: bônus numéricos automáticos; metade do dano mágico preservada até existir motor global de dano recebido.
+- Elfo Marítimo: 2 proficiências, +2 HP, modo submerso (+4 em todos os atributos exceto CON) e contador de 12h fora d'água.
+- Elfo Negro: escuridão total dobra apenas os bônus raciais de Destreza/Carisma.
+- Orc: bônus numéricos; Fortificação preservada como regra de equipamento/empunhadura.
+- Meio-Orc: seleção da segunda Origem; metade dos bônus/malefícios numéricos; Limite de Cansaço `(6 + limite da segunda Origem) / 2`; proficiências herdadas pela metade quando aplicável. Efeitos não escalares permanecem contextuais.
+- Gnomo: modificador de Sorte convertido em HP extra automaticamente.
+- Hobbit / Nórdico: números automáticos e regras passivas preservadas.
+- Humano Meio Dragão: ancestral escolhido, 2 sopros por descanso longo e fórmula de dano escalada por nível.
+- Humano Meio Demônio: parte/efeito definidos pelo mestre; ajustes mecânicos opcionais informados pelo jogador entram nas somas finais, sem valores padrão inventados.
+- Cursed: Imortal 1x/dia quando HP = 0, restaurando metade da vida máxima.
+- Kvaldir: Defesa Grotesca 1x/combate, com estado ativo visível até o fim do combate; Deslocamento/Cansaço ficam `não especificado no v6`.
+- Feral: parte fera e descrição; os números definidos pelo mestre podem ser registrados e entram nas somas finais.
+- Goblin: bônus de Origem e `+2 Furtividade` registrado para integração final do motor de perícias.
+- Thungan: rolagem 1d20 cinematográfica da Sorte Amaldiçoada; o item permanece informado manualmente porque o bloco de Origem não fornece a tabela que converte o resultado.
+- Titã: +6 INT e bloqueio de pontos de evolução de nível em Carisma; bônus de itens continuam permitidos.
+- Guardião: Revestimento com até 3 tentativas/turno, d20, ativação >10, crítico e CA temporária/fim do combate.
+- Fada: Adaptação e Encantamento com usos; voo/peso/rapidez preservados conforme a fonte.
+- Elemental: elemento principal; danos automáticos das habilidades ofensivas de Shikata sem elemento passam para o elemento escolhido e recebem mod. Magia adicional.
+- Slime: bônus/malefícios, Explosão Ácida, Devorar e escolha permanente de Caminho no nível 5; efeitos numéricos seguros de Gula/Orgulho/Preguiça/Inveja/Avareza entram nas somas. Efeitos que dependem de presa, contato, tamanho ou decisão de alvo permanecem explicitamente descritos/contextuais.
+- Undead: Lançar Parte Corporal com escalonamento em dados; demais regras corporais preservadas.
+- Troll da Montanha: Mordida Feroz com escalonamento; resistência a concussão preservada.
+- Troll da Floresta: Armadura Enferrujada com uso rastreado; debuff em outros alvos permanece contextual por não existir ficha remota do inimigo.
+- Gigante: números automáticos e alerta `SEMPRE ATACA POR ÚLTIMO`.
+- Celestial: botão de registro de ataque bem-sucedido cura o valor escalado por nível.
+- Velkro: Fervor Sanguinário rola 1d4 de cura após o jogador registrar que recebeu um ataque.
+- Metamorfo: 2 pontos da Origem, duas formas permanentes configuráveis, 2 transformações/descanso longo e ajustes mecânicos da forma entrando nas somas.
+- Vampiro: luz solar impede ativação; Despertar aplica HP temporário, duração por nível e ferramenta de roubo de vitalidade.
+- Lobisomem: condição de lua, transformação, +2 em todos os atributos/CA, cura completa ao transformar, ataque natural escalado e bloqueio de habilidades de Shikata durante a forma.
+- Lorv: metade dos atributos positivos/negativos informados do hospedeiro; Deslocamento/Cansaço ficam `não especificado no v6`; habilidades/desvantagens narrativas preservadas.
+
+### Fonte e lacunas tratadas explicitamente
+- `pontos de proficiência à escolha` de Humano/Elfo Marítimo são operacionalizados como perícias escolhidas, com aviso visível de que o bloco da Origem não apresenta outro destino nessa seção.
+- Efeitos que dependem de dano recebido, iniciativa de múltiplos personagens, equipamentos de terceiros, formas definidas pelo mestre ou atributos de inimigos não recebem números artificiais.
+- Campos ausentes no v6 usam ajuste manual da ficha e exibem `NÃO ESPECIFICADO`, em vez de receber defaults antigos.
+
+### Checklist de homologação
+1. Abrir Habilidades fora de combate: HUD de ações deve estar ausente; usar/rolar uma habilidade não deve gastar ação.
+2. Clicar `⚔ INICIAR COMBATE`: Turno 1 abre e HUD aparece fixo abaixo do header durante scroll.
+3. Gastar ações e avançar `Novo turno`; confirmar reset. Encerrar combate; HUD deve sumir imediatamente.
+4. Meio-Orc + Humano: confirmar Cansaço-base 5 antes do bônus de Constituição, +1 Percepção herdada e 2 proficiências herdadas.
+5. Elfo Marítimo: ativar água e confirmar +4 em todos os atributos exceto CON; voltar a terra e testar contador 12h.
+6. Elfo Negro: ativar escuridão total e confirmar DES racial 3→6 e CAR racial 1→2.
+7. Guardião: iniciar combate, tentar Revestimento até 3x/turno e confirmar d20/CA/duração.
+8. Drac/Crono/Kvaldir: usar habilidade e conferir estado ativo visível; avançar turno/encerrar combate para confirmar expiração.
+9. Meio Dragão: escolher ancestrais diferentes e testar sopro/dado 3D.
+10. Slime nível 5+: testar cada Caminho, especialmente escolhas de atributos de Inveja/Avareza.
+11. Metamorfo: distribuir 2 pontos, cadastrar 2 formas, transformar e confirmar ajustes finais.
+12. Vampiro/Lobisomem: testar restrições de sol/lua, HP e duração/bloqueio de Shikata.
+13. Meio-Demônio/Feral: cadastrar somente efeitos definidos pelo mestre e confirmar que atributos/CA/HP/Deslocamento mudam nas somas finais.
+14. Selecionar Slime, Kvaldir e Lorv e confirmar que campos ausentes na fonte aparecem como `NÃO ESPECIFICADO`, com ajuste manual disponível.
+
+### Validação executada
+- Parser TypeScript aplicado a todo `src/**/*.js` e `src/**/*.jsx`: 0 diagnósticos de sintaxe.
+- Smoke tests dos módulos puros confirmaram:
+  - exatamente 38 Origens;
+  - Meio-Orc + Humano: Cansaço-base 5, +1 Percepção herdada e 2 proficiências;
+  - Kvaldir sem Deslocamento/Cansaço inventados;
+  - efeitos numéricos definidos pelo mestre em Meio-Demônio/Feral entram nas somas;
+  - estados Drac/Kvaldir expiram corretamente no avanço/reset correspondente;
+  - economia de ações reporta combate inativo fora de combate.
+- `npm run build` não pôde ser executado neste ambiente porque o `node_modules` montado não contém o binário do Vite (`vite: not found`). Nenhuma dependência nova foi adicionada; o gate visual final continua sendo `npm install` + `npm run dev` no ambiente local utilizado nos lotes anteriores.
+
+## Lote 7 — Shikatas canônicas + subclasses + progressões + correção do flash cinematográfico
+
+### Objetivo
+Eliminar a manutenção paralela/manual das 21 Shikatas e fazer a ficha consumir uma fonte canônica gerada diretamente de `TALOS_SISTEMA_v6_COMPLETO.docx`, preservando nomes, níveis, subclasses, descrições e progressões do v6 sem aliases inventados.
+
+### Fonte canônica das 21 Shikatas
+- `scripts/extract_shikatas_v6.py` (novo)
+  - lê o DOCX oficial em ordem de parágrafos/tabelas;
+  - extrai metadados da Shikata, 2 subclasses, habilidades/passivas/recursos e tabelas de evolução;
+  - consolida reapresentações da mesma habilidade como progressão, em vez de criar chaves duplicadas;
+  - rejeita geração com habilidade sem descrição, chave duplicada, quantidade de Shikatas/subclasses inesperada ou Sinais do Bruxo incompletos.
+- `src/data/shikatas_v6.generated.js` (novo)
+  - contém `SHIKATAS_V6`, `SHIKATAS_HABILIDADES_V6` e `SHIKATA_EVOLUCOES_V6`.
+  - é arquivo gerado; não deve ser editado manualmente.
+- `src/data/system.js`
+  - `SHIKATAS` e `SHIKATAS_HABILIDADES` passam a apontar para a fonte gerada.
+  - a antiga lista manual/legada de Shikatas e habilidades foi removida.
+- `src/data/evolucoes.js`
+  - deixa de manter progressões paralelas e passa a ser apenas um wrapper sobre `SHIKATA_EVOLUCOES_V6`.
+
+### Resultado da auditoria
+- 21/21 Shikatas.
+- 42 subclasses (2 por Shikata).
+- Lista manual do Lote 06: 626 entradas.
+- Fonte canônica do Lote 07: 668 entradas.
+- 523 linhas de evolução estruturadas.
+- O aumento não é simples adição: aliases antigos/entradas duplicadas foram removidos ao mesmo tempo em que conteúdo ausente do v6 foi incorporado.
+- Destaques:
+  - Sentinela: 20 → 43 entradas canônicas.
+  - Invocador Funéreo: 24 → 34.
+  - Inclemente: 20 → 27.
+  - Ceifeiro: 33 → 39.
+  - Bruxo: 26 → 30, agora incluindo IGNITE, ARXIS, BREN e ECRYPT como entradas reais.
+- Spellstealer usa a nomenclatura oficial `Ditador`; saves com o alias legado `Ditador das Almas` são migrados automaticamente.
+- Hemomante volta a receber metadados diretamente da fonte (`Constituição`, `2d10+mod cons ou 11+mod cons`, dificuldade 9/10), sem override manual.
+- Sentinela mantém Dificuldade/Poder como `Não informado no documento`; Invocador Funéreo mantém Dado de Vida/Dificuldade/Poder como `Não informado no documento` onde o v6 não fornece valores.
+
+### Bruxo — Mutação e Sinais
+- `IGNITE`, `ARXIS`, `BREN` e `ECRYPT` são extraídos do bloco interno de SINAIS.
+- As tabelas textuais `TABELA DE EVOLUÇÃO ...` são associadas ao Sinal correto e não viram habilidades falsas.
+- Cada Sinal possui nível próprio de 1–6 ligado à MUTAÇÃO, independente do nível da Shikata.
+- Novo painel `Mutação & Sinais do Bruxo`:
+  - Nível de Mutação;
+  - XP de Mutação manual;
+  - evoluções disponíveis;
+  - nível individual de cada Sinal.
+- Cada nível de Mutação libera uma evolução de Sinal; níveis não podem ultrapassar 6.
+- O limite compartilhado de SINAIS é aplicado durante combate:
+  - antes do nível 5 da Shikata: 1 Sinal/turno;
+  - nível 5+: 2 Sinais/turno.
+- Usos próprios por descanso continuam sendo controlados individualmente (ex.: IGNITE, ARXIS, BREN, ECRYPT).
+- O parser de usos agora herda o último limite explícito da progressão quando níveis posteriores não repetem o número de usos.
+
+### Runtime e dano
+- `abilityRuntime.js`
+  - passou a aceitar o nível efetivo da progressão da habilidade;
+  - Sinais usam o nível de Mutação, demais habilidades usam o nível da Shikata;
+  - marcadores completos do v6 (`VEZ/VEZES POR DESCANSO ...`) continuam suportados;
+  - limite compartilhado dos Sinais é rastreado no mesmo motor oficial.
+- `damageRuntime.js`
+  - continua sem inventar dano quando a evolução vigente traz `Dano: —`.
+  - rolagens dos Sinais usam a evolução de Mutação vigente (ex.: IGNITE nível de Sinal 5 = 6d8 + mod Magia).
+- `useCharacter.js`
+  - regras persistentes atualizadas para versão 10;
+  - estado de Mutação/Sinais é salvo e normalizado em saves antigos.
+
+### Interface de Habilidades
+- Cabeçalho da Shikata exibe selo `FONTE CANÔNICA TALOS v6` e quantidade de entradas oficiais carregadas.
+- Itens iniciais passam a vir do bloco oficial da Shikata.
+- Tabelas de evolução são alimentadas pela mesma fonte canônica.
+- Para os Sinais, a tabela destaca o nível de Mutação do Sinal, não o nível do personagem.
+
+### Correção do flash antes das animações
+- Overlays cinematográficos de dado, descanso, avanço temporal e uso de habilidade agora nascem com a camada escura já opaca no primeiro frame.
+- A animação de entrada permanece no conteúdo/vinheta, evitando um frame claro da ficha antes da cena escura.
+- Fundos dos overlays foram aproximados de preto opaco para impedir vazamento visual da interface.
+- Na sequência `uso da habilidade → dano 3D`, o overlay de uso entrega a próxima cena antes de completar 100% do fade, removendo o pequeno intervalo claro entre portais.
+
+### Validação executada
+- Gerador canônico: 21 Shikatas, 42 subclasses, 668 entradas, 523 evoluções.
+- Nenhuma habilidade canônica sem descrição.
+- Nenhuma chave duplicada por Shikata/subclasse/nome.
+- Sinais do Bruxo validados obrigatoriamente durante a geração.
+- Smoke tests:
+  - IGNITE nível de Sinal 1 = 2 usos/descanso curto; nível 4 = 3; nível 5 = 4.
+  - BREN nível 5 preserva o upgrade anterior de 2 usos/descanso curto.
+  - ARXIS nível 6 preserva 3 usos/descanso curto obtidos no nível 5.
+  - limite compartilhado = 1 Sinal/turno antes do nível 5 e 2/turno a partir do nível 5, somente em combate.
+  - IGNITE usa 2d6 + mod Magia na base e 6d8 + mod Magia no nível de Sinal 5.
+- `node --check` nos módulos JS alterados: OK.
+- Parser TypeScript sobre os 26 arquivos `src/**/*.js|jsx`: 0 diagnósticos de sintaxe.
+- `python -m py_compile scripts/extract_shikatas_v6.py`: OK.
+- `npm ci` foi tentado, mas excedeu o limite do ambiente antes de disponibilizar o binário do Vite; o gate visual final continua sendo `npm install` + `npm run dev` localmente.
+
+## Hotfix 7.0.1 — exports compartilhados de `system.js`
+
+- Corrigida tela branca ao iniciar o Lote 7 causada por imports nomeados removidos durante a canonicalização das Shikatas.
+- Restaurados em `src/data/system.js`: `PERICIAS_BY_ATTR`, `PERICIAS_INFO`, `ESTADOS`, `ITEM_SLOTS` e `RARIDADE_CONFIG`.
+- A fonte canônica `SHIKATAS_V6` / `SHIKATAS_HABILIDADES_V6` permanece inalterada e continua sendo a origem das 21 Shikatas.
+- Validação estática dos imports relativos: 56 declarações verificadas em 26 arquivos JS/JSX, sem export ausente.
+- Validação direta do módulo `system.js`: 21 Shikatas, 38 perícias e 12 slots de equipamento carregados com sucesso.
+
+## Lote 8 — Multiclasse real + Tela de Evento + correção atômica dos Sinais
+
+### Multiclasse
+- Novo `src/data/multiclassRuntime.js` com modelo de níveis independentes e os 21 requisitos narrativos do TALOS v6.
+- Cada Shikata aprendida mantém seu próprio `nivel` e `subclasse` em `shikataProgress.entries`.
+- `shikata` continua sendo a Shikata ativa, preservando compatibilidade com os módulos anteriores.
+- `nivel` passa a representar o nível acumulado de referência; habilidades e progressões usam o nível próprio da Shikata ativa.
+- Novas ações: aprender Shikata, alternar Shikata ativa, ajustar nível manual e escolher subclasse por Shikata.
+- Evoluir concede +2 pontos somente à evolução executada e cria rolagem de HP pendente somente para a Shikata que evoluiu.
+- HP máximo soma as rolagens válidas de evolução de todas as Shikatas aprendidas.
+- D20 Dados oferece, em multiclasse, os modificadores de acerto das Shikatas aprendidas como alternativas sem somá-los.
+- Maestria Tática do Ladino Nv.5+ permanece ativa mesmo com outra Shikata selecionada.
+
+### Tela de Evento
+- Novo `SubclassEventOverlay.jsx`.
+- Ao alcançar o nível de subclasse por evolução, abre uma Tela de Evento cinematográfica com as duas escolhas.
+- A camada escura nasce opaca no primeiro frame para não reintroduzir o flash visual corrigido no Lote 7.
+- As opções mostram prévia de habilidades exclusivas da subclasse.
+- `Escolher depois` fecha o evento sem inventar escolha; a seleção continua disponível no menu normal.
+- Respeita nível canônico de desbloqueio: normalmente Nv.5 e Ceifeiro Nv.8.
+
+### Correção dos Sinais do Bruxo
+- `useOfficialAbility` passou a validar e commitar de forma atômica usando o estado mais recente do personagem.
+- Tentativa bloqueada pelo limite compartilhado de Sinais não gera Cansaço, não consome ação, uso ou recurso.
+- A proteção cobre inclusive cliques rápidos antes do próximo render do React.
+- Cards bloqueados exibem `Bloqueada: nenhum custo` no lugar do aviso de +1 Cansaço.
+
+### Compatibilidade
+- Saves anteriores migram automaticamente a Shikata atual para `shikataProgress` sem perder nível ou subclasse.
+- Alias legado `Ditador das Almas` continua migrando para `Ditador` também dentro do novo progresso por Shikata.
+- Subclasses legadas do Bardo continuam normalizadas.
+- Regras persistentes atualizadas para versão 11.
+
+### Validação
+- 21 requisitos cadastrados / 21 Shikatas.
+- 21 Shikatas com 2 subclasses cada.
+- JS puro: `node --check` OK.
+- JSX: parser TypeScript sem diagnósticos de sintaxe.
+- Imports relativos: 63 verificações, sem export ausente.
+- Smoke tests do runtime de Multiclasse/Turnos/Sinais: OK.
+- `npm install` do ambiente excedeu o limite antes de disponibilizar Vite; gate visual final permanece `npm install` + `npm run dev` local.
+
+## Lote 9 — Profissões, Perícias, Inspiração e Estados
+
+### Profissões e especialidades
+- Auditoria das 41 Profissões do TALOS v6.
+- Proficiências de profissão continuam automáticas e bloqueadas contra remoção acidental.
+- Artesão agora registra até 3 especialidades de Ofício.
+- Diplomata registra uma variação de Atuação.
+- Profissões com `Ofício (qualquer)` recebem seletor de especialidade.
+- Profissões com Ofício fixo exibem a especialidade oficial.
+- Amnésico permanece dependente do passado revelado/Mestre, sem regra inventada.
+
+### Testes de Perícia
+- Novo motor visual em `D20 Dados` para as 38 Perícias.
+- `1d20 + modificador do atributo` com ajuste manual do Mestre.
+- Origem da proficiência exibida: Profissão, Origem ou Manual.
+- D20 3D e histórico integrados.
+- Referências de DT do documento exibidas onde existem.
+- Luta concede +2 em Iniciativa quando possuída.
+- Luta/Enganação sem proficiência exibem o aviso de desvantagem do v6 sem inventar um valor numérico.
+
+### Estados
+- IMPARÁVEL remove/bloqueia Atordoado, Enraizado e Congelado.
+- CONCENTRAÇÃO aplica +10 Defesa e pode ser consumida ao registrar o primeiro ataque inimigo.
+- CANSADO permanece automático.
+- MORRENDO passa a ser automático em HP <= 0, com alerta global.
+- Condições adicionais ficam separadas dos três Estados centrais para evitar efeitos genéricos inventados.
+
+### Inspiração
+- Contador recebeu controles +/- e explicação direta.
+- Continua usando a regra da mesa definida no projeto: gastar 1 Inspiração = +1 na próxima rolagem.
+- Testes de Perícia também aceitam Inspiração.
+
+### UX / correções
+- Checkbox de confirmação de requisito da Multiclasse corrigido: tamanho compacto, alinhado com o texto e responsivo.
+- Profissões com escolhas especiais ganharam painel próprio na Identidade.
+
+### Compatibilidade / validação
+- Regras persistentes atualizadas para versão 12.
+- Saves antigos ganham `professionState`; `morrendo` legado deixa de ser persistido.
+- 30 arquivos JS/JSX: 0 diagnósticos de sintaxe no parser TypeScript.
+- 68 imports relativos: 0 exports ausentes.
+- Smoke tests do runtime do Lote 9: OK.
+
+## Lote 10 — Consolidação final + MORRENDO/MORTE
+
+### Regra da mesa: Teste de Vontade ao MORRENDO
+- O v6 informa que personagens em 0 PV ou menos continuam realizando testes para estabilizar, mas não fecha DT/trilha de sucessos e falhas no trecho central.
+- Regra da mesa implementada separadamente: `1d20` natural, `10+` sucesso, `9-` falha.
+- 3 sucessos recuperam 1 HP e encerram MORRENDO.
+- 3 falhas confirmam MORTE.
+- Sem modificadores, sem Inspiração e sem efeitos especiais de 1/20 natural.
+- Cura que eleve HP acima de 0 antes da MORTE limpa sucessos/falhas.
+- MORTE confirmada não é removida por cura comum nem por descanso; exige ressurreição explícita.
+- Testes usam o D20 3D cinematográfico e entram no histórico de rolagens.
+
+### Consolidação de regras da mesa
+- Novo `src/data/tableRules.js` concentra as regras específicas da mesa.
+- Inspiração `+1` deixou de ficar repetida como constante solta em componentes.
+- Novo `docs/REGRAS_DA_MESA.md` documenta divergências/complementos em relação ao DOCX.
+
+### Fonte canônica / limpeza
+- Removido `src/data/talos_reference.json`, fonte paralela não consumida pela aplicação.
+- `scripts/sync-docx-data.ps1` permanece dedicado ao catálogo de itens/conjuntos.
+- Shikatas e evoluções usam exclusivamente a cadeia DOCX → `extract_shikatas_v6.py` → `shikatas_v6.generated.js`.
+- Gerador de Shikatas validado como determinístico para o DOCX atual.
+
+### Auditoria automatizada
+- Novo `scripts/audit-talos.mjs` e comando `npm run audit:talos`.
+- Verifica contagens canônicas, cobertura de Shikatas, subclasses, versão das regras, regras da mesa, referências legadas e imports/exports relativos.
+- A checagem de imports foi incluída especificamente para impedir regressões como a tela branca corrigida no Hotfix 7.0.1.
+
+### Persistência
+- Regras persistentes atualizadas para versão 13.
+- Saves antigos recebem `deathSaveState` automaticamente.
+- MORRENDO continua derivado de HP <= 0; MORTE é persistida até ressurreição explícita.
+
+### Resultado estrutural final
+- 21 Shikatas.
+- 668 entradas canônicas de Shikata.
+- 523 linhas de evolução.
+- 38 Origens.
+- 41 Profissões.
+- 38 Perícias.
+- 3 Estados oficiais centrais.
+- Documentação final em `docs/AUDITORIA_FINAL_LOTE10.md`.

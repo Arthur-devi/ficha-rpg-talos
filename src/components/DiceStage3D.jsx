@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { INSPIRATION_TABLE_RULE } from '../data/tableRules';
 
 const PHI = (1 + Math.sqrt(5)) / 2;
 const CINEMATIC_ROLL_MS = 1550;
@@ -509,7 +510,7 @@ export default function DiceStage3D({ result, showDock = true }) {
   useCanvasAnimation(cinematicCanvasRef, dice, animationStateRef, false, visible);
 
   useEffect(() => {
-    if (!result?.id || result.id === lastResultIdRef.current) return undefined;
+    if (!result?.id || result.noCinematic || result.id === lastResultIdRef.current) return undefined;
     lastResultIdRef.current = result.id;
     startedAtRef.current = performance.now();
     setVisible(true);
@@ -559,7 +560,7 @@ export default function DiceStage3D({ result, showDock = true }) {
           <div className="dice-dock-label">DADO ATIVO</div>
           <canvas ref={previewCanvasRef} className="dice-dock-canvas" aria-label="Prévia tridimensional do dado" />
           <div className="dice-dock-meta">
-            <strong>{dice[0] ? `d${dice[0].sides}` : 'd20'}</strong>
+            <strong>{dice[0] ? `d${dice[0].sides}` : result?.noCinematic ? 'AUTO' : 'd20'}</strong>
             <span>{result ? `${result.label} · ${result.total}` : 'Pronto para rolar'}</span>
           </div>
         </aside>
@@ -585,7 +586,7 @@ export default function DiceStage3D({ result, showDock = true }) {
             {revealed && (
               <>
                 <strong>{result?.total}</strong>
-                {result?.inspirationUsed && <small>Inspiração +{result.inspirationBonus || 1}</small>}
+                {result?.inspirationUsed && <small>Inspiração +{result.inspirationBonus ?? INSPIRATION_TABLE_RULE.bonus}</small>}
                 {hasMaximum && <small>✦ Valor máximo natural</small>}
                 {hiddenDiceCount > 0 && <small>+ {hiddenDiceCount} dado(s) fora da cena</small>}
                 <em>Clique para continuar</em>

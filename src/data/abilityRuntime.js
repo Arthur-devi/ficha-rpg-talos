@@ -1,6 +1,7 @@
 import { getEvolucao } from './evolucoes.js';
 import { getOfficialAbilityDamageSpec } from './damageRuntime.js';
 import { getAbilityActionSpec } from './turnRuntime.js';
+import { getShikataLevel } from './multiclassRuntime.js';
 
 const PERIOD_LABELS = {
   short: 'descanso curto',
@@ -32,6 +33,15 @@ function activeEvolutionTexts(shikataId, abilityName, level) {
   return eligible.filter(row => Number(row.nivel) === maxLevel).map(row => row.desc || '');
 }
 
+function eligibleEvolutionTextsDescending(shikataId, abilityName, level) {
+  const rows = getEvolucao(shikataId, abilityName) || [];
+  return rows
+    .filter(row => Number(row.nivel) <= Number(level || 1))
+    .sort((a, b) => Number(b.nivel || 0) - Number(a.nivel || 0))
+    .map(row => row.desc || '')
+    .filter(Boolean);
+}
+
 function findFirst(texts, regex) {
   for (const text of texts) {
     const match = normalizeText(text).match(regex);
@@ -42,7 +52,7 @@ function findFirst(texts, regex) {
 
 function parseUsage(texts) {
   const joined = texts.map(normalizeText);
-  const cooldown = findFirst(joined, /(\d+)x?\s*a cada\s*(\d+)\s*(turnos?|dias?)/);
+  const cooldown = findFirst(joined, /(\d+)\s*(?:x|vez(?:es)?)?\s*a cada\s*(\d+)\s*(turnos?|dias?)/);
   if (cooldown) {
     const unit = cooldown[3].startsWith('turn') ? 'turn' : 'day';
     return {
@@ -57,14 +67,14 @@ function parseUsage(texts) {
   }
 
   const patterns = [
-    { regex: /(\d+)\s*(?:x|flechas?|invocacoes?|invocacao)\s*(?:\/|por\s+)?\s*desc\.?\s*curto/, resetType: 'short' },
-    { regex: /(\d+)\s*(?:x|flechas?|invocacoes?|invocacao)\s*(?:\/|por\s+)?\s*desc\.?\s*longo/, resetType: 'long' },
-    { regex: /(\d+)x?\s*(?:\/|por\s+)?\s*turno\b/, resetType: 'turn' },
-    { regex: /(\d+)x?\s*(?:por\s+)?combate\b/, resetType: 'combat' },
-    { regex: /(\d+)x?\s*(?:\/|por\s+)?\s*dia\b/, resetType: 'day' },
-    { regex: /(\d+)x?\s*por\s+semana\b/, resetType: 'week' },
-    { regex: /(\d+)x?\s*semanal\b/, resetType: 'week' },
-    { regex: /(\d+)x?\s*por\s+mes\b/, resetType: 'month' },
+    { regex: /(\d+)\s*(?:x|vez(?:es)?|flechas?|invocacoes?|invocacao)\s*(?:\/|por\s+)?\s*(?:desc\.?|descanso)\s*curto/, resetType: 'short' },
+    { regex: /(\d+)\s*(?:x|vez(?:es)?|flechas?|invocacoes?|invocacao)\s*(?:\/|por\s+)?\s*(?:desc\.?|descanso)\s*longo/, resetType: 'long' },
+    { regex: /(\d+)\s*(?:x|vez(?:es)?)?\s*(?:\/|por\s+)?\s*turno\b/, resetType: 'turn' },
+    { regex: /(\d+)\s*(?:x|vez(?:es)?)?\s*(?:por\s+)?combate\b/, resetType: 'combat' },
+    { regex: /(\d+)\s*(?:x|vez(?:es)?)?\s*(?:\/|por\s+)?\s*dia\b/, resetType: 'day' },
+    { regex: /(\d+)\s*(?:x|vez(?:es)?)?\s*por\s+semana\b/, resetType: 'week' },
+    { regex: /(\d+)\s*(?:x|vez(?:es)?)?\s*semanal\b/, resetType: 'week' },
+    { regex: /(\d+)\s*(?:x|vez(?:es)?)?\s*por\s+mes\b/, resetType: 'month' },
   ];
 
   for (const { regex, resetType } of patterns) {
@@ -83,21 +93,21 @@ function parseUsage(texts) {
 }
 
 function parseLifetime(texts) {
-  const match = findFirst(texts, /(\d+)x?\s*em\s*vida/);
+  const match = findFirst(texts, /(\d+)\s*(?:x|vez(?:es)?)?\s*em\s*vida/);
   return match ? Number(match[1]) || null : null;
 }
 
 function parseTargetRule(texts, defaultReset) {
   const options = [
-    { regex: /1x\s*por\s*aliado\s*\/\s*inimigo/, label: 'aliado/inimigo' },
-    { regex: /1x\s*por\s*inimigo\s*\/\s*combate/, label: 'inimigo', resetType: 'combat' },
-    { regex: /1x\s*por\s*inimigo\s*\/\s*desc\.?\s*curto/, label: 'inimigo', resetType: 'short' },
-    { regex: /1x\s*por\s*pessoa\s*\/\s*dia/, label: 'pessoa', resetType: 'day' },
-    { regex: /1x\s*por\s*criatura/, label: 'criatura' },
-    { regex: /1x\s*por\s*monstro/, label: 'monstro' },
-    { regex: /1x\s*por\s*inimigo/, label: 'inimigo' },
+    { regex: /1\s*(?:x|vez)?\s*por\s*aliado\s*\/\s*inimigo/, label: 'aliado/inimigo' },
+    { regex: /1\s*(?:x|vez)?\s*por\s*inimigo\s*\/\s*combate/, label: 'inimigo', resetType: 'combat' },
+    { regex: /1\s*(?:x|vez)?\s*por\s*inimigo\s*\/\s*(?:desc\.?|descanso)\s*curto/, label: 'inimigo', resetType: 'short' },
+    { regex: /1\s*(?:x|vez)?\s*por\s*pessoa\s*\/\s*dia/, label: 'pessoa', resetType: 'day' },
+    { regex: /1\s*(?:x|vez)?\s*por\s*criatura/, label: 'criatura' },
+    { regex: /1\s*(?:x|vez)?\s*por\s*monstro/, label: 'monstro' },
+    { regex: /1\s*(?:x|vez)?\s*por\s*inimigo/, label: 'inimigo' },
     { regex: /(?:\(|\b)1\s*\/\s*inimigo(?:\)|\b)/, label: 'inimigo' },
-    { regex: /1x\s*por\s*alvo/, label: 'alvo' },
+    { regex: /1\s*(?:x|vez)?\s*por\s*alvo/, label: 'alvo' },
   ];
   for (const option of options) {
     if (findFirst(texts, option.regex)) {
@@ -166,15 +176,49 @@ export function getAbilityKey(shikataId, abilityName) {
   return `${shikataId || 'sem-shikata'}::${abilityName || 'habilidade'}`;
 }
 
+export function getAbilityProgressionLevel(char, ability) {
+  if (char?.shikata === 'bruxo' && ability?.progressao === 'mutacao') {
+    const raw = Number(char?.classResources?.bruxo?.signalLevels?.[ability.nome]);
+    return Math.max(1, Math.min(6, Number.isFinite(raw) ? raw : 1));
+  }
+  return Math.max(1, getShikataLevel(char, char?.shikata) || 1);
+}
+
+export const BRUXO_SIGNAL_GROUP_KEY = 'bruxo::grupo-sinais';
+
+export function getAbilityGroupSpec(char, ability) {
+  if (char?.shikata === 'bruxo' && char?.abilityTimeline?.combatActive && ability?.progressao === 'mutacao') {
+    const maxUses = getShikataLevel(char, 'bruxo') >= 5 ? 2 : 1;
+    return {
+      key: BRUXO_SIGNAL_GROUP_KEY,
+      maxUses,
+      resetType: 'turn',
+      label: `Sinais: ${maxUses} por turno`,
+    };
+  }
+  return null;
+}
+
 export function getAbilityRuntimeSpec(shikataId, ability, level, subclasse) {
   const evolutionTexts = activeEvolutionTexts(shikataId, ability.nome, level);
+  const eligibleEvolutionTexts = eligibleEvolutionTextsDescending(shikataId, ability.nome, level);
   const baseUsageTexts = [ability.usos || ''].filter(Boolean);
   const fallbackTexts = [...baseUsageTexts, ability.desc || ''].filter(Boolean);
   const allTexts = [...evolutionTexts, ...fallbackTexts];
-  const evolutionUsage = parseUsage(evolutionTexts);
+  let evolutionUsage = { maxUses: null, resetType: null, label: null };
+  let evolutionUsageText = [];
+  for (const text of eligibleEvolutionTexts) {
+    const parsed = parseUsage([text]);
+    const hasUsage = parsed.maxUses != null || !!parsed.resetType || !!parsed.cooldown || parsed.label === 'Ilimitado';
+    if (hasUsage) {
+      evolutionUsage = parsed;
+      evolutionUsageText = [text];
+      break;
+    }
+  }
   const hasEvolutionUsage = evolutionUsage.maxUses != null || !!evolutionUsage.resetType || !!evolutionUsage.cooldown || evolutionUsage.label === 'Ilimitado';
   const usage = hasEvolutionUsage ? evolutionUsage : parseUsage(baseUsageTexts);
-  const currentUsageTexts = hasEvolutionUsage ? evolutionTexts : baseUsageTexts;
+  const currentUsageTexts = hasEvolutionUsage ? evolutionUsageText : baseUsageTexts;
   const lifetimeCap = parseLifetime(allTexts);
   const targetRule = parseTargetRule(allTexts, usage.resetType);
   const damageSpec = getOfficialAbilityDamageSpec(shikataId, ability, level);

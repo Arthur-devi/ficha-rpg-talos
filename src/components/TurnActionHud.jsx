@@ -16,7 +16,7 @@ function ActionPips({ total, remaining, type }) {
 export default function TurnActionHud({ char, derived, spendTurnAction, adjustTurnActions }) {
   const [showAdjust, setShowAdjust] = useState(false);
   const economy = derived?.turnEconomy;
-  if (!economy) return null;
+  if (!economy || !char?.abilityTimeline?.combatActive) return null;
 
   const effects = economy.temporaryEffects || [];
   const reactions = economy.reactionUses || [];
@@ -25,8 +25,8 @@ export default function TurnActionHud({ char, derived, spendTurnAction, adjustTu
   return (
     <div className="turn-action-hud" role="status" aria-live="polite">
       <div className="turn-action-title">
-        <small>TURNO</small>
-        <strong>{timeline.turn || 1}</strong>
+        <small>COMBATE {timeline.combat || 1}</small>
+        <strong>T{timeline.turn || 1}</strong>
       </div>
 
       <div className={`turn-action-block ${economy.fullRemaining <= 0 ? 'depleted' : ''}`}>
