@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import TalosIcon from './TalosIcon';
 
 const HOLD_MS = 780;
 const FADE_MS = 420;
@@ -24,7 +25,7 @@ export default function PeriodTransitionOverlay({ scene, onDone }) {
     <div className={`period-transition-overlay ${closing ? 'closing' : ''}`} aria-live="polite" aria-label={scene.label}>
       <div className="period-transition-vignette" />
       <div className="period-transition-content">
-        <span className="period-transition-icon">{scene.icon}</span>
+        <span className="period-transition-icon">{scene.iconName ? <TalosIcon name={scene.iconName} size={50} strokeWidth={1.35} /> : scene.icon}</span>
         <small>{scene.kicker || 'TEMPO AVANÇOU'}</small>
         <strong>{scene.label}</strong>
         <div className="period-transition-counter">

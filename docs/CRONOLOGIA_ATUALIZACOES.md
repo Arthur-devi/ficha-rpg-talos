@@ -1093,3 +1093,165 @@ Eliminar a manutenção paralela/manual das 21 Shikatas e fazer a ficha consumir
 - 38 Perícias.
 - 3 Estados oficiais centrais.
 - Documentação final em `docs/AUDITORIA_FINAL_LOTE10.md`.
+
+
+## V11.1 — Remake Visual / Fundação TALOS
+
+### Direção visual
+- Base visual migrada de dashboard web para ficha física de RPG em pergaminho.
+- Fundo externo em madeira/sépia escuro e área principal tratada como folha envelhecida.
+- Bordas, sombras internas e textura de papel criadas apenas com CSS, sem dependência de imagem externa.
+- Paleta consolidada em tinta marrom, sépia, dourado antigo e vermelho sangue.
+
+### Tipografia
+- Removida a inconsistência em que uma fonte denominada Playfair carregava Montserrat.
+- V11.1 passa a utilizar pilha serifada clássica do sistema para título, cabeçalhos e corpo.
+- Arquivos de fonte locais deixaram de ser necessários.
+
+### Componentes
+- Cards redesenhados como blocos impressos em papel.
+- Inputs/selects/textarea receberam aparência de campos de ficha.
+- Botões primários assumem acabamento de metal/dourado envelhecido.
+- Modais convencionais passam a usar superfície de pergaminho.
+- Atributos passam a ter composição de medalhão impresso.
+- Tabelas, inventário, habilidades e tooltips foram harmonizados com a nova linguagem visual.
+
+### Preservação funcional
+- Nenhum runtime de regras foi alterado.
+- Nenhuma regra, save, habilidade, origem, perícia, combate ou dado foi reescrito neste lote.
+- Navegação continua temporariamente no topo; a sidebar de páginas pertence ao V11.2.
+
+## V11.2 — Estrutura de Livro / Sidebar
+
+- Header horizontal substituído por uma barra lateral fixa à esquerda, com navegação por páginas da ficha.
+- Páginas renomeadas para: Personagem, Atributos, Combate, Habilidades, Equipamentos, Poderes e Diário.
+- Emojis de interface substituídos por uma biblioteca própria de ícones SVG monocromáticos (`TalosIcon.jsx`).
+- Sidebar inclui identidade TALOS, personagem/HP, indicador de CANSADO e ações Abrir/Salvar ficha.
+- Em telas menores a sidebar vira uma lombada compacta de ícones, permanecendo à esquerda.
+- Atributos reconstruídos como medalhões circulares reais (`aspect-ratio: 1`); textos, bônus e controles ficam fora do círculo para nunca deformar a geometria.
+- Nenhuma regra de jogo foi alterada.
+
+
+## V11.3 — Dados dedicados, combate contextual e grimório legível
+
+- Renomeada a página lateral **Combate** para **Dados**; o conteúdo continua sendo a central de rolagens 3D, ataque, perícias, vida por nível e MORRENDO.
+- Removido o painel operacional de combate da aba Habilidades.
+- **Iniciar combate** passa para a sidebar global.
+- Em combate, o HUD sticky contém **Novo turno**, economia de ações e **Encerrar combate**.
+- Dia / Semana / Mês permanecem disponíveis globalmente na sidebar e mantêm as transições cinematográficas.
+- Habilidades recebeu redesign de legibilidade: cartões separados por técnica, cabeçalhos de nível, contraste reforçado, badges de tipo, descrição sem itálico e tabelas de evolução com estado atual destacado.
+- Controles de uso ganharam área visual própria, separada do texto de regra.
+- Nenhuma regra do motor TALOS foi alterada.
+
+
+## V11.4 — Página Personagem / folha de rosto clássica
+
+- Página Personagem deixou de usar a sequência de cards Identidade/Origem/Shikata e recebeu composição própria de ficha física.
+- Nome, jogador, profissão, tendência, divindade, XP e nível acumulado foram reunidos no cabeçalho da folha.
+- Adicionados seis selos circulares de leitura rápida: HP, CA, Defesa, Deslocamento, Cansaço e Inspiração.
+- Adicionada moldura de retrato central com silhueta padrão e suporte a arte personalizada persistida no save.
+- Origem, Shikata ativa e Subclasse passam a ocupar a base da folha principal, com botão de evolução integrado.
+- Informações detalhadas foram convertidas em seções de ledger: profissão, origem/herança, mecânicas de origem, Shikatas/Multiclasse e registro pessoal.
+- Saves antigos permanecem compatíveis; o novo campo `portrait` possui valor padrão vazio e não altera a versão das regras TALOS.
+- Nenhum runtime de regra foi alterado.
+
+
+## V11.5 — Atributos & Perícias + despoluição visual
+
+- Página Atributos reorganizada como ficha impressa; pontos distributivos foram compactados no próprio cabeçalho.
+- Bônus numéricos ganharam cores semânticas discretas para diferenciar valores positivos, negativos e derivados.
+- Perícias passaram a usar duas colunas balanceadas com ajuda contextual segura, sem sobreposição entre colunas.
+- Novo `InfoTip.jsx` centraliza o padrão de informação contextual usado em Atributos, Perícias, Vitais, Estados, Personagem e Dados.
+- Vitais exibem somente valores e controles de sessão; fórmulas de HP/CA/Deslocamento/Cansaço e regra de Inspiração foram movidas para notas de informação.
+- Estados/Condições foram compactados; definições completas ficam sob consulta e efeitos ativos continuam visíveis.
+- Botões de trocar/remover retrato foram movidos para uma faixa própria abaixo da imagem.
+- Herança absorve as mecânicas específicas da Origem em um bloco recolhível; removida a duplicação visual “Origem — Mecânicas v6”.
+- Shikatas & Multiclasse foram compactadas: descrição da Shikata e regras de multiclasse ficam em informação contextual; fluxo raro de aprender nova Shikata passa a ser recolhível.
+- Acerto da Shikata na página Dados deixa de exibir parágrafo técnico permanente e passa a consultar a regra pelo ícone de informação.
+- Regras, persistência e runtimes TALOS permanecem inalterados.
+
+
+## V11.6 — Habilidades & Poderes / refinamento temático
+
+- Página **Poderes** deixa o padrão de formulário web e passa a usar o mesmo acabamento de grimório das habilidades oficiais.
+- Poderes manuais agora possuem metadados compactos, descrição longa recolhida visualmente, área própria de custo/dano/ação e controle de usos separado da regra.
+- Editor de poder foi refeito como ficha de registro; regras auxiliares de ação, usos e dano automatizado foram movidas para `InfoTip`.
+- Descanso Curto/Longo foi reorganizado em dois controles de ledger; explicação completa permanece acessível sem ocupar a página.
+- Notas Arcanas receberam superfície pautada e composição de caderno.
+- Em **Habilidades**, o cabeçalho da Shikata foi compactado e a descrição completa passou para consulta contextual.
+- Recursos de Bardo, Hemomante e Bruxo receberam layout coerente com o grimório, sem alterar contadores ou cálculos.
+- Descrições oficiais muito longas são limitadas visualmente a três linhas e continuam integralmente acessíveis pelo ícone de informação.
+- Regras de progressão saíram do bloco permanente e foram incorporadas ao cabeçalho por ajuda contextual.
+- Versão visual do aplicativo atualizada para V11.6.
+- Nenhuma regra, persistência, economia de ações, runtime de habilidade ou cálculo TALOS foi alterado.
+
+
+## V11.7 — Inventário / Equipamentos + otimização do grimório
+
+- Página **Equipamentos** reconstruída em três folhas operacionais: Arsenal Equipado, Mochila e Catálogo.
+- Arsenal Equipado exibe efeitos mecânicos ativos e os 12 slots sem repetir descrições extensas.
+- Mochila foi convertida em ledger de leitura rápida, preservando equipar, desequipar, editar itens manuais, quantidade e remoção.
+- Catálogo continua contendo as 457 entradas, com filtros por texto/categoria/raridade, mas renderiza somente 60 por janela e permite carregar mais sob demanda.
+- Busca do Catálogo usa valor adiado para não bloquear a digitação em máquinas mais lentas.
+- Editor de item manual foi harmonizado com o V11 e mantém integralmente CA, HP máximo, Deslocamento, atributos e efeitos especiais.
+- **Otimização de Habilidades:** habilidades desbloqueadas são agrupadas uma vez por mudança de Shikata/nível/subclasse; habilidades futuras deixam de ser montadas no DOM até o jogador clicar em consultar.
+- O conteúdo futuro continua completo e consultável; nenhuma habilidade, progressão, contador, ação ou custo foi removido.
+- Versão visual do aplicativo atualizada para V11.7.
+- Nenhuma regra, persistência, cálculo de item ou runtime TALOS foi alterado.
+
+
+## V11.8 — Virada de Página / navegação de livro
+
+- Sidebar passa a navegar com direção física de página: páginas posteriores viram para frente; páginas anteriores retornam no sentido oposto.
+- Implementado efeito visual de folha de pergaminho atravessando a página com sombra direcional, sem criar cópias dos componentes funcionais.
+- Removida a antiga cascata de entrada de `tab-transition` e dos cards, reduzindo custo visual especialmente em Habilidades com muitas técnicas.
+- A troca de página passa a retornar ao topo automaticamente para manter a metáfora de folha física.
+- Adicionado folio discreto com página atual/total e nome da seção.
+- Transição adaptada para mobile e desabilitada sob `prefers-reduced-motion`.
+- Versão visual do aplicativo atualizada para V11.8.
+- Nenhuma regra, persistência, cálculo ou runtime TALOS foi alterado.
+
+## V11.8.1 — Hotfix de Fluidez / correção da virada
+
+- Diagnóstico em vídeo mostrou que a guia Habilidades continuava exigindo pintura excessiva e que a virada V11.8 estava visualmente pesada.
+- A animação de página deixa de acompanhar a altura total do documento e passa a ser uma camada fixa restrita ao viewport.
+- Removidos `clip-path` e desfoque da virada; o novo efeito usa somente `transform`/`opacity` em uma dobra estreita e uma sombra simples.
+- A virada agora é recriada para toda navegação, inclusive duas trocas seguidas no mesmo sentido, e a camada é desmontada ao final da animação.
+- O reposicionamento ao topo ocorre antes da montagem visual da nova página, reduzindo trabalho de layout/pintura em folhas longas.
+- Página Habilidades recebeu otimização de renderização visual sem perda de conteúdo: textura de fundo e sombras foram simplificadas localmente, cards ficaram menos custosos para pintar e tabelas de evolução/controles de uso fora do viewport usam `content-visibility: auto`.
+- Versão visual do aplicativo atualizada para V11.8.1.
+- Nenhuma regra, persistência, cálculo, habilidade, progressão ou runtime TALOS foi alterado.
+
+
+## V11.9 — Polimento e responsividade final
+
+- Removido integralmente o efeito visual de virada em pergaminho introduzido no V11.8/V11.8.1.
+- A navegação passa a ser imediata e retorna ao topo antes de montar a nova página, evitando composição adicional em folhas longas.
+- O folio de página foi preservado como referência discreta e reduzido em telas pequenas.
+- Removidos efeitos de pintura/composição que não agregavam informação: `backdrop-filter` de modais, textura procedural da sidebar e `drop-shadow` do stack global.
+- Habilidades mantém as otimizações do V11.7/V11.8.1: habilidades futuras sob demanda, agrupamento memoizado e `content-visibility` em evolução/runtime.
+- Fundo e sombras da página Habilidades foram simplificados novamente para reduzir paint sem descaracterizar a ficha.
+- Hover de cards e controles deixa de deslocar elementos; foco por teclado passa a ter tratamento consistente em toda a aplicação.
+- Proteções de overflow foram reforçadas para títulos, cabeçalhos, inputs, selects, tooltips e controles flexíveis.
+- Responsividade final revisada em 980px, 760px, 560px e 420px, incluindo largura da lombada, paddings, grids, modais e alvos de toque.
+- Versão visual do aplicativo atualizada para V11.9.
+- Nenhuma regra, persistência, cálculo, habilidade, item, estado, progressão ou runtime TALOS foi alterado.
+
+## V11.9.1 — Ajustes finais de viewport e carteira
+
+- Removidas as margens verticais da folha que deixavam o fundo marrom visível como faixas vazias no topo e rodapé.
+- Overflow horizontal global foi recortado para impedir a scrollbar inferior causada por conteúdo excedendo a largura útil; scrollers locais intencionais permanecem ativos.
+- A carteira de Moedas recebeu conversão ascendente automática: `100 PC -> 1 PP`, `100 PP -> 1 PO`, `100 PO -> 1 PD`.
+- O botão **Converter saldo** encadeia as três etapas e preserva qualquer sobra abaixo de 100.
+- A carteira foi refinada para duas colunas em telas menores, com taxas visíveis e mensagem de resultado.
+- Versão visual do aplicativo atualizada para V11.9.1.
+
+## V11.9.2 — Carteira bidirecional / microajuste de UX
+
+- A conversão automática global de moedas foi removida após teste de uso.
+- A carteira passa a oferecer conversões manuais e reversíveis por denominação.
+- PC possui conversão para PP; PP permite voltar para PC ou avançar para PO; PO permite voltar para PP ou avançar para PD; PD permite voltar para PO.
+- Cada clique movimenta somente um lote (`100` da inferior por `1` da superior, ou o inverso), sem cascata automática.
+- Botões inválidos ficam visualmente desabilitados e cada ação informa a conversão executada.
+- Versão visual do aplicativo atualizada para V11.9.2.
+- Nenhuma regra, persistência, cálculo ou runtime TALOS foi alterado.

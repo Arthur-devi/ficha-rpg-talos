@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { SHIKATAS, SHIKATAS_HABILIDADES, getHabilidadesPorNivel, getHabilidadesFuturas } from '../data/system';
 import { getEvolucao } from '../data/evolucoes';
 import { formatHpCost, getAbilityAvailability, getAbilityGroupSpec, getAbilityProgressionLevel, getAbilityRuntimeSpec } from '../data/abilityRuntime';
@@ -7,47 +7,78 @@ import { pushDiceHistory } from '../data/diceRuntime';
 import { canSpendAction } from '../data/turnRuntime';
 import { applyElementalOriginToDamageRoll } from '../data/originRuntime';
 import DiceStage3D from './DiceStage3D';
-import PeriodTransitionOverlay from './PeriodTransitionOverlay';
 import AbilityUseOverlay from './AbilityUseOverlay';
 import { getShikataLevel, getShikataSubclass } from '../data/multiclassRuntime';
+import TalosIcon from './TalosIcon';
+import InfoTip from './InfoTip';
 
 function clampCounter(value) {
   return Math.max(0, Number(value) || 0);
 }
 
+
+function groupAbilitiesByLevel(skills) {
+  const grouped = new Map();
+  for (const ability of skills) {
+    const level = Number(ability.nivel) || 0;
+    if (!grouped.has(level)) grouped.set(level, []);
+    grouped.get(level).push(ability);
+  }
+  return [...grouped.entries()].sort((a, b) => a[0] - b[0]);
+}
+
 function EvolucaoTable({ shikataId, nome, nivelAtual }) {
   const rows = getEvolucao(shikataId, nome);
   if (!rows || rows.length === 0) return null;
+  const unlockedRows = rows.filter(row => row.nivel <= nivelAtual);
+  const currentLevel = unlockedRows.length ? Math.max(...unlockedRows.map(row => row.nivel)) : null;
+
   return (
-    <div style={{ marginTop: 8, borderRadius: 4, overflow: 'hidden', border: '1px solid var(--parch-300)' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' }}>
+    <div className="ability-evolution-block">
+      <div className="ability-evolution-title">
+        <TalosIcon name="progress" size={14} />
+        <span>Evolução da habilidade</span>
+      </div>
+      <table className="ability-evolution-table">
         <thead>
-          <tr style={{ background: 'var(--parch-200)' }}>
-            <th style={{ fontFamily: 'var(--font-heading)', fontSize: '0.62rem', letterSpacing: '0.07em', textTransform: 'uppercase', padding: '4px 8px', textAlign: 'left', color: 'var(--ink-light)', width: 64, borderBottom: '1px solid var(--parch-300)' }}>Nível</th>
-            <th style={{ fontFamily: 'var(--font-heading)', fontSize: '0.62rem', letterSpacing: '0.07em', textTransform: 'uppercase', padding: '4px 8px', textAlign: 'left', color: 'var(--ink-light)', borderBottom: '1px solid var(--parch-300)' }}>Efeito</th>
+          <tr>
+            <th>Nível</th>
+            <th>Efeito</th>
           </tr>
         </thead>
         <tbody>
-          {rows.map((r, i) => {
-            const unlocked = r.nivel <= nivelAtual;
-            const isCurrent = rows.filter(x => x.nivel <= nivelAtual).length > 0 &&
-              r.nivel === Math.max(...rows.filter(x => x.nivel <= nivelAtual).map(x => x.nivel));
+          {rows.map((row, index) => {
+            const unlocked = row.nivel <= nivelAtual;
+            const isCurrent = row.nivel === currentLevel;
             return (
-              <tr key={i} style={{
-                background: isCurrent ? 'rgba(212,160,23,0.08)' : unlocked ? 'rgba(253,246,227,0.4)' : 'transparent',
-                opacity: unlocked ? 1 : 0.45,
-                borderBottom: i < rows.length - 1 ? '1px solid var(--parch-200)' : 'none',
-              }}>
-                <td style={{ padding: '4px 8px', fontFamily: 'var(--font-heading)', fontWeight: 600, color: isCurrent ? 'var(--gold-dark)' : unlocked ? 'var(--ink-dark)' : 'var(--ink-faded)', whiteSpace: 'nowrap' }}>
-                  {isCurrent && <span style={{ marginRight: 4 }}>▶</span>}
-                  Nv. {r.nivel}
+              <tr key={index} className={`${unlocked ? 'unlocked' : 'locked'} ${isCurrent ? 'current' : ''}`}>
+                <td>
+                  {isCurrent && <span className="ability-evolution-current-mark" aria-hidden="true" />}
+                  Nv. {row.nivel}
                 </td>
-                <td style={{ padding: '4px 8px', color: unlocked ? 'var(--ink-mid)' : 'var(--ink-faded)', lineHeight: 1.4 }}>{r.desc}</td>
+                <td>{row.desc}</td>
               </tr>
             );
           })}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+
+function AbilityDescription({ ability }) {
+  const description = ability?.desc || '';
+  const isLong = description.length > 230;
+  if (!description) return null;
+  return (
+    <div className={`ability-description-row ${isLong ? 'compact' : ''}`}>
+      <p className="habilidade-desc">{description}</p>
+      {isLong && (
+        <InfoTip title={ability.nome} align="end" label={`Ver regra completa de ${ability.nome}`}>
+          {description}
+        </InfoTip>
+      )}
     </div>
   );
 }
@@ -67,21 +98,26 @@ function BardoResources({ char, update }) {
   }
 
   return (
-    <div className="card">
-      <div className="card-header"><span>♪</span><h3>Recursos do Bardo</h3></div>
-      <div className="card-body">
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
+    <div className="card class-resource-sheet">
+      <div className="card-header class-resource-header">
+        <TalosIcon name="powers" size={18} />
+        <div><h3>Recursos do Bardo</h3><small>Performance e progressão de concerto</small></div>
+        <InfoTip title="Recursos do Bardo" align="end" label="Sobre os recursos do Bardo">
+          Estes contadores acompanham os recursos especiais da Shikata. Os ajustes permanecem manuais para registrar o estado real da sessão sem inventar regras além do TALOS.
+        </InfoTip>
+      </div>
+      <div className="card-body class-resource-body">
+        <div className="class-resource-grid">
           {fields.map(field => (
-            <div key={field.key} style={{ border: '1px solid var(--parch-300)', borderRadius: 'var(--radius-md)', padding: 12, background: 'rgba(253,246,227,0.45)' }}>
-              <label>{field.label}</label>
+            <div key={field.key} className="class-resource-counter">
+              <span>{field.label}</span>
               <input
                 type="number"
                 min={0}
                 value={resources[field.key] || 0}
                 onChange={e => setResource(field.key, e.target.value)}
-                style={{ textAlign: 'center', fontFamily: 'var(--font-heading)', fontSize: '1.2rem', marginBottom: 8 }}
               />
-              <div style={{ display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap' }}>
+              <div className="class-resource-actions">
                 <button className="btn btn-secondary btn-sm" onClick={() => adjust(field.key, -field.step)}>-{field.step}</button>
                 <button className="btn btn-secondary btn-sm" onClick={() => adjust(field.key, field.step)}>+{field.step}</button>
               </div>
@@ -102,40 +138,38 @@ function HemomanteResources({ char, update }) {
 
   const aprimoramentosPorTurno = nivel => nivel >= 20 ? 4 : nivel >= 14 ? 3 : nivel >= 5 ? 2 : 1;
   const maxAprimoramentos = aprimoramentosPorTurno(hemomanteLevel);
-
-  const fields = [{ key: 'reservaSangue', label: 'Reserva ML', step: 1, max: maxReserva }];
+  const reserva = Math.min(maxReserva, resources.reservaSangue || 0);
 
   return (
-    <div className="card">
-      <div className="card-header"><span>ML</span><h3>Recursos do Hemomante</h3></div>
-      <div className="card-body">
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
-          {fields.map(field => {
-            const value = resources[field.key] || 0;
-            const nextValue = field.max ? Math.min(value, field.max) : value;
-            return (
-              <div key={field.key} style={{ border: '1px solid var(--parch-300)', borderRadius: 'var(--radius-md)', padding: 12, background: 'rgba(253,246,227,0.45)' }}>
-                <label>{field.label}</label>
-                <input
-                  type="number"
-                  min={0}
-                  max={field.max}
-                  value={nextValue}
-                  onChange={e => setResource(field.key, field.max ? Math.min(field.max, clampCounter(e.target.value)) : e.target.value)}
-                  style={{ textAlign: 'center', fontFamily: 'var(--font-heading)', fontSize: '1.2rem', marginBottom: 8 }}
-                />
-                <div style={{ display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap' }}>
-                  <button className="btn btn-secondary btn-sm" onClick={() => adjust(field.key, -field.step)}>-{field.step}</button>
-                  <button className="btn btn-secondary btn-sm" onClick={() => setResource(field.key, field.max ? Math.min(field.max, value + field.step) : value + field.step)}>+{field.step}</button>
-                </div>
-                {field.key === 'reservaSangue' && (
-                  <div style={{ marginTop: 6, fontSize: '0.72rem', color: 'var(--ink-faded)', fontFamily: 'var(--font-heading)', textAlign: 'center' }}>
-                    Máx {maxReserva} | Defesa +{Math.floor(nextValue / 2)} | Aprimoramentos: {resources.aprimoramentosUsadosTurno || 0}/{maxAprimoramentos} por turno
-                  </div>
-                )}
-              </div>
-            );
-          })}
+    <div className="card class-resource-sheet">
+      <div className="card-header class-resource-header">
+        <TalosIcon name="vitality" size={18} />
+        <div><h3>Recursos do Hemomante</h3><small>Reserva de sangue e aprimoramentos</small></div>
+        <InfoTip title="Reserva ML" align="end" label="Sobre a Reserva ML">
+          Máximo atual: {maxReserva} ML ({hemomanteLevel} nível(is) × 4). A reserva concede Defesa igual à metade do valor atual. Limite de aprimoramentos neste turno: {maxAprimoramentos}.
+        </InfoTip>
+      </div>
+      <div className="card-body class-resource-body">
+        <div className="class-resource-grid compact">
+          <div className="class-resource-counter featured">
+            <span>Reserva ML</span>
+            <input
+              type="number"
+              min={0}
+              max={maxReserva}
+              value={reserva}
+              onChange={e => setResource('reservaSangue', Math.min(maxReserva, clampCounter(e.target.value)))}
+            />
+            <div className="class-resource-actions">
+              <button className="btn btn-secondary btn-sm" onClick={() => adjust('reservaSangue', -1)}>-1</button>
+              <button className="btn btn-secondary btn-sm" onClick={() => setResource('reservaSangue', Math.min(maxReserva, reserva + 1))}>+1</button>
+            </div>
+          </div>
+          <div className="class-resource-facts">
+            <span><small>MÁXIMO</small><strong>{maxReserva}</strong></span>
+            <span><small>DEFESA</small><strong className="semantic-positive">+{Math.floor(reserva / 2)}</strong></span>
+            <span><small>APRIMORAMENTOS</small><strong>{resources.aprimoramentosUsadosTurno || 0}/{maxAprimoramentos}</strong></span>
+          </div>
         </div>
       </div>
     </div>
@@ -163,10 +197,16 @@ function BruxoResources({ char, update }) {
   };
 
   return (
-    <div className="card">
-      <div className="card-header"><span>ᛝ</span><h3>Mutação & Sinais do Bruxo</h3></div>
-      <div className="card-body">
-        <div className="bruxo-mutation-summary">
+    <div className="card class-resource-sheet">
+      <div className="card-header class-resource-header">
+        <TalosIcon name="sparkle" size={18} />
+        <div><h3>Mutação & Sinais do Bruxo</h3><small>Evolução independente dos quatro Sinais</small></div>
+        <InfoTip title="Mutação" align="end" label="Sobre Mutação e Sinais">
+          Os níveis 2–6 de IGNITE, ARXIS, BREN e ECRYPT são níveis do próprio Sinal obtidos por MUTAÇÃO, e não o nível da Shikata. Cada nível de Mutação permite evoluir 1 Sinal.
+        </InfoTip>
+      </div>
+      <div className="card-body class-resource-body">
+        <div className="bruxo-mutation-summary grimoire-resource-summary">
           <div>
             <span>Nível de Mutação</span>
             <strong>{mutationLevel}</strong>
@@ -181,11 +221,11 @@ function BruxoResources({ char, update }) {
           </div>
           <div>
             <span>Evoluções disponíveis</span>
-            <strong>{availableUpgrades}</strong>
+            <strong className={availableUpgrades > 0 ? 'semantic-positive' : ''}>{availableUpgrades}</strong>
             <small>Cada nível de Mutação permite evoluir 1 Sinal.</small>
           </div>
         </div>
-        <div className="bruxo-signal-grid">
+        <div className="bruxo-signal-grid grimoire-signal-grid">
           {Object.keys(defaults).map(name => {
             const level = Math.max(1, Math.min(6, Number(signalLevels[name]) || 1));
             return (
@@ -200,9 +240,6 @@ function BruxoResources({ char, update }) {
             );
           })}
         </div>
-        <p className="bruxo-mutation-help">
-          Os níveis 2–6 exibidos nas tabelas de IGNITE, ARXIS, BREN e ECRYPT são níveis do próprio Sinal obtidos por <strong>MUTAÇÃO</strong>, não o nível da Shikata.
-        </p>
       </div>
     </div>
   );
@@ -275,7 +312,7 @@ function AbilityRuntimePanel({ ability, char, onUse, onReset, onFeedback }) {
         {spec.usageLabel && <span className="ability-runtime-pill usage">{spec.usageLabel}</span>}
         {spec.damageSpec && (
           <span className="ability-runtime-pill ability-damage-pill">
-            🎲 {damageBaseVariants.length > 1 ? `${damageBaseVariants.length} opções de dano` : spec.damageSpec.displayFormula}{spec.damageSpec.damageTypes?.length ? ` · ${spec.damageSpec.damageTypes.map(damageTypeLabel).join(' + ')}` : ''}
+            <TalosIcon name="dice" size={13} /> {damageBaseVariants.length > 1 ? `${damageBaseVariants.length} opções de dano` : spec.damageSpec.displayFormula}{spec.damageSpec.damageTypes?.length ? ` · ${spec.damageSpec.damageTypes.map(damageTypeLabel).join(' + ')}` : ''}
           </span>
         )}
         {remainingText && <span className={`ability-runtime-pill ${runtimeAvailable ? 'ready' : 'danger'}`}>{remainingText}</span>}
@@ -285,7 +322,7 @@ function AbilityRuntimePanel({ ability, char, onUse, onReset, onFeedback }) {
         {spec.performanceCost > 0 && <span className="ability-runtime-pill cost">-{spec.performanceCost} Performance</span>}
         {spec.optionalMlCost > 0 && <span className="ability-runtime-pill optional">Aprimoramento: {spec.optionalMlCost} ML</span>}
         {spec.essenceCost && <span className="ability-runtime-pill essence">Essência: {spec.essenceCost.amount} {spec.essenceCost.unit}</span>}
-        <span className={`ability-runtime-pill action ${!actionAvailability.ok ? 'danger' : ''}`}>⏱ {char.abilityTimeline?.combatActive ? selectedAction.label : 'FORA DE COMBATE · AÇÃO LIVRE'}</span>
+        <span className={`ability-runtime-pill action ${!actionAvailability.ok ? 'danger' : ''}`}><TalosIcon name="clock" size={12} /> {char.abilityTimeline?.combatActive ? selectedAction.label : 'FORA DE COMBATE · AÇÃO LIVRE'}</span>
         <span className={`ability-runtime-pill ${canUse ? 'fatigue' : 'ready'}`}>{canUse ? '+1 Cansaço' : 'Bloqueada: nenhum custo'}</span>
       </div>
 
@@ -342,11 +379,11 @@ function AbilityRuntimePanel({ ability, char, onUse, onReset, onFeedback }) {
 
       <div className="ability-runtime-actions">
         <button type="button" className="btn btn-primary btn-sm" onClick={handleUse} disabled={!canUse}>
-          ✦ Usar habilidade
+          <TalosIcon name="abilities" size={14} /> Usar habilidade
         </button>
         {(record.used > 0 || (record.targets || []).length > 0 || record.lastUsedTurn || record.lastUsedDay) && (
           <button type="button" className="btn btn-secondary btn-sm" onClick={() => onReset?.(spec.key, { resetLifetime: spec.lifetimeCap != null })} title="Corrigir o contador desta habilidade">
-            ↺ Corrigir contador
+            <TalosIcon name="reset" size={14} /> Corrigir contador
           </button>
         )}
       </div>
@@ -368,94 +405,12 @@ function AbilityRuntimePanel({ ability, char, onUse, onReset, onFeedback }) {
   );
 }
 
-function AbilityTimelineControls({ char, onAdvance, onStartCombat, onEndCombat }) {
-  const timeline = char.abilityTimeline || {};
-  const [transitionScene, setTransitionScene] = useState(null);
-  const combatActive = Boolean(timeline.combatActive);
-  const controls = [
-    { key: 'turn', label: 'Novo turno', icon: '↻', counter: 'turn', requiresCombat: true },
-    { key: 'day', label: 'Novo dia', icon: '☀', counter: 'day' },
-    { key: 'week', label: 'Nova semana', icon: '7d', counter: 'week' },
-    { key: 'month', label: 'Novo mês', icon: '☾', counter: 'month' },
-  ];
-
-  const showTransition = (scene) => setTransitionScene({ id: `${Date.now()}-${scene.label}`, ...scene });
-
-  const handleAdvance = (control) => {
-    if (control.requiresCombat && !combatActive) return;
-    const before = Math.max(1, Number(timeline[control.counter]) || 1);
-    const result = onAdvance?.(control.key);
-    if (result && result.ok === false) return;
-    showTransition({
-      icon: control.icon,
-      label: control.label.toUpperCase(),
-      before,
-      after: before + 1,
-      detail: control.key === 'turn' ? 'Ações, recargas e efeitos temporários do turno foram atualizados.' : 'Recargas ligadas a este período foram atualizadas.',
-    });
-  };
-
-  const handleStartCombat = () => {
-    const before = Math.max(0, Number(timeline.combat) || 0);
-    const result = onStartCombat?.();
-    if (!result?.ok) return;
-    showTransition({ icon: '⚔', label: 'COMBATE INICIADO', before, after: before + 1, detail: 'Turno 1 aberto. A economia de ações está ATIVA.' });
-  };
-
-  const handleEndCombat = () => {
-    const result = onEndCombat?.();
-    if (!result?.ok) return;
-    showTransition({ icon: '◇', label: 'COMBATE ENCERRADO', before: timeline.turn || 1, after: '—', detail: 'A economia de ações foi desativada. Habilidades fora de combate não consomem ações.' });
-  };
-
-  return (
-    <>
-    <div className={`card ability-engine-card ${combatActive ? 'combat-active' : 'combat-inactive'}`}>
-      <div className="card-header"><span>⏱</span><h3>Motor de Habilidades</h3></div>
-      <div className="card-body">
-        <div className="combat-lifecycle-row">
-          <div className={`combat-status-badge ${combatActive ? 'active' : ''}`}>
-            <span>{combatActive ? '⚔' : '◇'}</span>
-            <div><small>ESTADO DO COMBATE</small><strong>{combatActive ? `COMBATE ${timeline.combat || 1} · TURNO ${timeline.turn || 1}` : 'FORA DE COMBATE'}</strong></div>
-          </div>
-          {!combatActive ? (
-            <button type="button" className="btn btn-primary combat-start-btn" onClick={handleStartCombat}>⚔ INICIAR COMBATE</button>
-          ) : (
-            <button type="button" className="btn btn-secondary combat-end-btn" onClick={handleEndCombat}>Encerrar combate</button>
-          )}
-        </div>
-
-        <div className="ability-timeline-stats">
-          <span>Turno <strong>{combatActive ? (timeline.turn || 1) : '—'}</strong></span>
-          <span>Combate <strong>{timeline.combat || 0}</strong></span>
-          <span>Dia <strong>{timeline.day || 1}</strong></span>
-          <span>Semana <strong>{timeline.week || 1}</strong></span>
-          <span>Mês <strong>{timeline.month || 1}</strong></span>
-        </div>
-        <div className="ability-timeline-actions">
-          {controls.map(control => (
-            <button key={control.key} type="button" className="btn btn-secondary btn-sm" disabled={control.requiresCombat && !combatActive} onClick={() => handleAdvance(control)}>
-              <span>{control.icon}</span> {control.label}
-            </button>
-          ))}
-        </div>
-        <p className="ability-engine-help">
-          {combatActive
-            ? 'Combate ativo: ataques e habilidades consomem a economia de 2 ações completas + 1 bônus. Novo turno restaura as ações e avança efeitos temporários.'
-            : 'Fora de combate: a ficha continua controlando usos, descansos, dias e custos, mas NÃO consome nem bloqueia ações. Inicie um combate para ativar o HUD de turno.'}
-        </p>
-      </div>
-    </div>
-    <PeriodTransitionOverlay scene={transitionScene} onDone={() => setTransitionScene(null)} />
-    </>
-  );
-}
-
-export default function TabHabilidades({ char, update, derived, useOfficialAbility, resetOfficialAbilityUse, advanceAbilityPeriod, startCombat, endCombat }) {
+export default function TabHabilidades({ char, update, derived, useOfficialAbility: executeOfficialAbility, resetOfficialAbilityUse }) {
   const shikataData = SHIKATAS.find(s => s.id === char.shikata);
   const [runtimeFeedback, setRuntimeFeedback] = useState(null);
   const [damageRoll, setDamageRoll] = useState(null);
   const [abilityUseScene, setAbilityUseScene] = useState(null);
+  const [showFutureAbilities, setShowFutureAbilities] = useState(false);
 
   const handleOfficialAbilityUse = (ability, options) => {
     const progressionLevel = getAbilityProgressionLevel(char, ability);
@@ -466,7 +421,7 @@ export default function TabHabilidades({ char, update, derived, useOfficialAbili
       ml: char.classResources?.hemomante?.reservaSangue || 0,
     });
 
-    const result = useOfficialAbility?.(ability, options);
+    const result = executeOfficialAbility?.(ability, options);
     if (!result?.ok) return result;
 
     let rolledDamage = null;
@@ -516,30 +471,41 @@ export default function TabHabilidades({ char, update, derived, useOfficialAbili
     if (scene?.damageRoll) setDamageRoll(scene.damageRoll);
   };
 
+  const nivel = Math.max(1, getShikataLevel(char, char.shikata) || 1);
+  const subclasse = getShikataSubclass(char, char.shikata);
+  const unlockedSkills = useMemo(
+    () => getHabilidadesPorNivel(char.shikata, nivel, subclasse),
+    [char.shikata, nivel, subclasse],
+  );
+  const lockedSkills = useMemo(
+    () => getHabilidadesFuturas(char.shikata, nivel, subclasse),
+    [char.shikata, nivel, subclasse],
+  );
+  const unlockedByLevel = useMemo(() => groupAbilitiesByLevel(unlockedSkills), [unlockedSkills]);
+  const lockedByLevel = useMemo(() => groupAbilitiesByLevel(lockedSkills), [lockedSkills]);
+  const abilityLevels = useMemo(
+    () => new Set((SHIKATAS_HABILIDADES[char.shikata] || []).map(ability => Number(ability.nivel) || 0)),
+    [char.shikata],
+  );
+
   if (!shikataData) {
     return (
       <div className="stack">
-        <AbilityTimelineControls char={char} onAdvance={advanceAbilityPeriod} onStartCombat={startCombat} onEndCombat={endCombat} />
         <div className="card">
-          <div className="card-body" style={{ textAlign: 'center', padding: '40px 20px' }}>
-            <div style={{ fontSize: '2.5rem', marginBottom: 12 }}>⚔️</div>
-            <h3 style={{ marginBottom: 8, color: 'var(--ink-light)' }}>Nenhuma Shikata Selecionada</h3>
-            <p style={{ color: 'var(--ink-faded)', fontSize: '0.9rem' }}>O combate pode ser iniciado normalmente. Vá até <strong>Identidade</strong> e selecione uma Shikata para carregar as habilidades da classe.</p>
+          <div className="card-body ability-empty-state">
+            <TalosIcon name="abilities" size={38} />
+            <h3>Nenhuma Shikata Selecionada</h3>
+            <p>Vá até <strong>Personagem</strong> e selecione uma Shikata para carregar o grimório de habilidades da classe.</p>
           </div>
         </div>
       </div>
     );
   }
 
-  const nivel = Math.max(1, getShikataLevel(char, char.shikata) || 1);
-  const subclasse = getShikataSubclass(char, char.shikata);
-  const unlockedSkills = getHabilidadesPorNivel(char.shikata, nivel, subclasse);
-  const lockedSkills = getHabilidadesFuturas(char.shikata, nivel, subclasse);
   const subclasseUnlocked = nivel >= (shikataData.subclasseNivel || 999);
 
   return (
-    <div className="stack">
-      <AbilityTimelineControls char={char} onAdvance={advanceAbilityPeriod} onStartCombat={startCombat} onEndCombat={endCombat} />
+    <div className="stack abilities-page-stack">
       {runtimeFeedback && (
         <div className={`ability-runtime-feedback ${runtimeFeedback.ok ? 'success' : 'error'}`}>
           <span>{runtimeFeedback.ok ? '✓' : '!'}</span>
@@ -556,46 +522,35 @@ export default function TabHabilidades({ char, update, derived, useOfficialAbili
         </div>
       )}
       {/* Class header */}
-      <div className="card">
-        <div className="card-header">
-          <span>⚔️</span>
-          <h3>{shikataData.name} — Nível {nivel}</h3>
+      <div className="card shikata-grimoire-card">
+        <div className="card-header shikata-grimoire-header">
+          <TalosIcon name="abilities" size={18} />
+          <div className="shikata-grimoire-title">
+            <h3>{shikataData.name}</h3>
+            <small>Nível {nivel} · {(SHIKATAS_HABILIDADES[char.shikata] || []).length} entradas oficiais</small>
+          </div>
+          <InfoTip title={shikataData.name} align="end" label={`Sobre a Shikata ${shikataData.name}`}>
+            {shikataData.desc} Fonte canônica: TALOS v6, com progressões sincronizadas do DOCX.{shikataData.itensIniciais ? ` Itens iniciais: ${shikataData.itensIniciais}` : ''}
+          </InfoTip>
         </div>
-        <div className="card-body">
-          <div className="shikata-canonical-strip">
-            <span>✓ FONTE CANÔNICA TALOS v6</span>
-            <small>{(SHIKATAS_HABILIDADES[char.shikata] || []).length} entradas oficiais · progressões sincronizadas do DOCX</small>
+        <div className="card-body shikata-grimoire-body">
+          <div className="shikata-facts-grid">
+            <span><TalosIcon name="dice" size={14} /><small>VIDA PÓS NV.1</small><strong>{shikataData.dadoVida}</strong></span>
+            <span><TalosIcon name="chart" size={14} /><small>MOD. ACERTO</small><strong>{shikataData.modificador}</strong></span>
+            <span><TalosIcon name="engine" size={14} /><small>DIFICULDADE</small><strong>{shikataData.dificuldade}</strong></span>
+            <span><TalosIcon name="sparkle" size={14} /><small>PODER</small><strong>{shikataData.poder}</strong></span>
           </div>
-          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: '0.85rem', color: 'var(--ink-mid)', marginBottom: 10 }}>
-            <span>🎲 Dado de vida pós nv.1: <strong>{shikataData.dadoVida}</strong></span>
-            <span>📊 Mod. acerto: <strong>{shikataData.modificador}</strong></span>
-            <span>⚡ Dificuldade: <strong>{shikataData.dificuldade}</strong></span>
-            <span>💫 Poder: <strong>{shikataData.poder}</strong></span>
-          </div>
-          <p style={{ fontStyle: 'italic', color: 'var(--ink-mid)', fontSize: '0.88rem', lineHeight: 1.55 }}>{shikataData.desc}</p>
-          {shikataData.itensIniciais && (
-            <div className="shikata-starting-items">
-              <strong>Itens iniciais</strong>
-              <span>{shikataData.itensIniciais}</span>
-            </div>
-          )}
 
-          {/* Subclasse */}
           {shikataData.subclasses.length > 0 && (
-            <div style={{ marginTop: 14, padding: '10px 14px', background: subclasseUnlocked ? 'rgba(212,160,23,0.08)' : 'transparent', border: `1px solid ${subclasseUnlocked ? 'var(--gold-dark)' : 'var(--parch-300)'}`, borderRadius: 'var(--radius-md)' }}>
-              <div style={{ fontFamily: 'var(--font-heading)', fontSize: '0.72rem', color: subclasseUnlocked ? 'var(--gold-dark)' : 'var(--ink-faded)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
-                {subclasseUnlocked ? '✦ Subclasse Desbloqueada' : `🔒 Subclasse disponível no nível ${shikataData.subclasseNivel}`}
+            <div className={`shikata-subclass-strip ${subclasseUnlocked ? 'unlocked' : 'locked'}`}>
+              <div>
+                <small>{subclasseUnlocked ? 'SUBCLASSE' : `SUBCLASSE NO NÍVEL ${shikataData.subclasseNivel}`}</small>
+                <strong>{subclasseUnlocked ? (subclasse || 'Não selecionada') : 'Ainda bloqueada'}</strong>
               </div>
-              {subclasseUnlocked && char.subclasse ? (
-                <div style={{ fontFamily: 'var(--font-heading)', fontSize: '0.95rem', color: 'var(--ink-dark)' }}>{char.subclasse}</div>
-              ) : subclasseUnlocked ? (
-                <div style={{ fontSize: '0.82rem', color: 'var(--ink-faded)' }}>Subclasse não selecionada. Vá em Identidade.</div>
-              ) : (
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  {shikataData.subclasses.map(sc => (
-                    <span key={sc} className="badge" style={{ opacity: 0.5, borderColor: 'var(--parch-400)', color: 'var(--ink-faded)' }}>{sc}</span>
-                  ))}
-                </div>
+              {!subclasseUnlocked && (
+                <InfoTip title="Subclasses futuras" align="end" label="Ver subclasses disponíveis">
+                  {shikataData.subclasses.join(' · ')}
+                </InfoTip>
               )}
             </div>
           )}
@@ -607,118 +562,121 @@ export default function TabHabilidades({ char, update, derived, useOfficialAbili
       {char.shikata === 'bruxo' && <BruxoResources char={char} update={update} />}
 
       {/* Unlocked abilities - grouped by level */}
-      <div className="card">
-        <div className="card-header">
-          <span>✦</span>
+      <div className="card abilities-section-card">
+        <div className="card-header abilities-section-header">
+          <TalosIcon name="abilities" size={18} />
           <h3>Habilidades Desbloqueadas ({unlockedSkills.length})</h3>
         </div>
-        <div className="card-body">
+        <div className="card-body abilities-list-body">
           {unlockedSkills.length === 0 ? (
-            <p style={{ color: 'var(--ink-faded)', fontSize: '0.85rem', fontStyle: 'italic' }}>Nenhuma habilidade desbloqueada ainda.</p>
+            <p className="abilities-empty-copy">Nenhuma habilidade desbloqueada ainda.</p>
           ) : (
-            (() => {
-              // Agrupa por nível
-              const byLevel = {};
-              unlockedSkills.forEach(h => {
-                if (!byLevel[h.nivel]) byLevel[h.nivel] = [];
-                byLevel[h.nivel].push(h);
-              });
-              return Object.keys(byLevel).sort((a,b) => Number(a)-Number(b)).map(lvl => (
-                <div key={lvl} style={{ marginBottom: 16 }}>
-                  {/* Separador de nível */}
-                  <div style={{
-                    display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8,
-                  }}>
-                    <div style={{
-                      fontFamily: 'var(--font-heading)', fontSize: '0.72rem', fontWeight: 600,
-                      color: 'var(--parch-100)', background: Number(lvl) === nivel ? 'var(--gold-dark)' : 'var(--ink-dark)',
-                      padding: '3px 10px', borderRadius: 4, letterSpacing: '0.08em',
-                      whiteSpace: 'nowrap', flexShrink: 0,
-                    }}>
-                      Nível {lvl}
-                      {Number(lvl) === nivel && <span style={{ marginLeft: 6, fontSize: '0.6rem', opacity: 0.85 }}>← atual</span>}
+            unlockedByLevel.map(([lvl, abilities]) => {
+              const isCurrentLevel = lvl === nivel;
+              return (
+                <section key={lvl} className={`ability-level-group ${isCurrentLevel ? 'current' : ''}`}>
+                  <div className="ability-level-heading">
+                    <div>
+                      <span className="ability-level-number">Nível {lvl}</span>
+                      {isCurrentLevel && <small>Nível atual</small>}
                     </div>
-                    <div style={{ flex: 1, height: 1, background: 'var(--parch-300)' }} />
+                    <span className="ability-level-count">{abilities.length} {abilities.length === 1 ? 'entrada' : 'entradas'}</span>
                   </div>
-                  {byLevel[lvl].map((h, idx) => (
-                    <div key={idx} className="habilidade-row unlocked" style={{ marginLeft: 8 }}>
-                      <div style={{display:'flex',gap:6,alignItems:'center',marginBottom:4,flexWrap:'wrap'}}>
-                        {h.tipo && <span style={{fontSize:'0.6rem',fontFamily:'var(--font-heading)',textTransform:'uppercase',letterSpacing:'0.06em',padding:'1px 6px',borderRadius:3,background:h.tipo==='passiva'?'#e8f5e9':h.tipo==='reacao'?'#fce4ec':h.tipo==='bonus'?'#e3f2fd':'#f3e5f5',color:h.tipo==='passiva'?'#2e7d32':h.tipo==='reacao'?'#c62828':h.tipo==='bonus'?'#1565c0':'#6a1b9a'}}>{h.tipo}</span>}
-                        {h.usos && <span style={{fontSize:'0.65rem',fontFamily:'var(--font-heading)',color:'var(--ink-faded)'}}>{h.usos}</span>}
-                        {h.subclasse && <span style={{fontSize:'0.6rem',fontFamily:'var(--font-heading)',color:'var(--gold-dark)',background:'rgba(212,160,23,0.08)',padding:'1px 6px',borderRadius:3,border:'1px solid var(--gold-dark)'}}>{h.subclasse}</span>}
-                      </div>
-                      <div className="habilidade-nome">{h.nome}</div>
-                      <div className="habilidade-desc">{h.desc}</div>
-                      <EvolucaoTable shikataId={char.shikata} nome={h.nome} nivelAtual={getAbilityProgressionLevel(char, h)} />
-                      <AbilityRuntimePanel
-                        ability={h}
-                        char={char}
-                        onUse={handleOfficialAbilityUse}
-                        onReset={resetOfficialAbilityUse}
-                        onFeedback={setRuntimeFeedback}
-                      />
-                    </div>
-                  ))}
-                </div>
-              ));
-            })()
+                  <div className="ability-level-list">
+                    {abilities.map(ability => (
+                      <article key={`${ability.nivel}-${ability.nome}-${ability.subclasse || 'base'}`} className={`habilidade-row unlocked ability-kind-${ability.tipo || 'ativa'}`}>
+                        <div className="ability-entry-meta">
+                          {ability.tipo && <span className={`ability-type-badge ${ability.tipo}`}>{ability.tipo}</span>}
+                          {ability.usos && <span className="ability-uses-badge">{ability.usos}</span>}
+                          {ability.subclasse && <span className="ability-subclass-badge">{ability.subclasse}</span>}
+                        </div>
+                        <h4 className="habilidade-nome">{ability.nome}</h4>
+                        <AbilityDescription ability={ability} />
+                        <EvolucaoTable shikataId={char.shikata} nome={ability.nome} nivelAtual={getAbilityProgressionLevel(char, ability)} />
+                        <AbilityRuntimePanel
+                          ability={ability}
+                          char={char}
+                          onUse={handleOfficialAbilityUse}
+                          onReset={resetOfficialAbilityUse}
+                          onFeedback={setRuntimeFeedback}
+                        />
+                      </article>
+                    ))}
+                  </div>
+                </section>
+              );
+            })
           )}
         </div>
       </div>
 
-      {/* Locked abilities - grouped by level */}
+      {/* Future abilities stay available, but remain unmounted until requested to keep the grimoire responsive. */}
       {lockedSkills.length > 0 && (
-        <div className="card">
-          <div className="card-header">
-            <span>🔒</span>
+        <div className="card abilities-section-card abilities-future-card">
+          <div className="card-header abilities-section-header">
+            <TalosIcon name="lock" size={18} />
             <h3>Habilidades Futuras</h3>
+            <span className="ability-future-count">{lockedSkills.length}</span>
           </div>
-          <div className="card-body">
-            {(() => {
-              const byLevel = {};
-              lockedSkills.forEach(h => {
-                if (!byLevel[h.nivel]) byLevel[h.nivel] = [];
-                byLevel[h.nivel].push(h);
-              });
-              return Object.keys(byLevel).sort((a,b) => Number(a)-Number(b)).map(lvl => (
-                <div key={lvl} style={{ marginBottom: 16 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                    <div style={{
-                      fontFamily: 'var(--font-heading)', fontSize: '0.72rem', fontWeight: 600,
-                      color: 'var(--ink-faded)', background: 'var(--parch-200)',
-                      padding: '3px 10px', borderRadius: 4, letterSpacing: '0.08em',
-                      border: '1px solid var(--parch-400)', whiteSpace: 'nowrap', flexShrink: 0,
-                    }}>
-                      Nível {lvl}
-                    </div>
-                    <div style={{ flex: 1, height: 1, background: 'var(--parch-300)' }} />
-                  </div>
-                  {byLevel[lvl].map((h, idx) => (
-                    <div key={idx} className="habilidade-row locked" style={{ marginLeft: 8 }}>
-                      <div style={{display:'flex',gap:6,alignItems:'center',marginBottom:4,flexWrap:'wrap'}}>
-                        {h.tipo && <span style={{fontSize:'0.6rem',fontFamily:'var(--font-heading)',textTransform:'uppercase',letterSpacing:'0.06em',padding:'1px 6px',borderRadius:3,background:'var(--parch-200)',color:'var(--ink-faded)'}}>{h.tipo}</span>}
-                        {h.subclasse && <span style={{fontSize:'0.6rem',fontFamily:'var(--font-heading)',color:'var(--ink-faded)',padding:'1px 6px',borderRadius:3,border:'1px solid var(--parch-400)'}}>{h.subclasse}</span>}
-                      </div>
-                      <div className="habilidade-nome">{h.nome}</div>
-                      <div className="habilidade-desc">{h.desc}</div>
-                      <EvolucaoTable shikataId={char.shikata} nome={h.nome} nivelAtual={getAbilityProgressionLevel(char, h)} />
-                    </div>
-                  ))}
+          <div className="card-body abilities-list-body">
+            {!showFutureAbilities ? (
+              <div className="ability-future-summary">
+                <div>
+                  <strong>{lockedSkills.length} habilidades ainda bloqueadas</strong>
+                  <span>O conteúdo futuro fica recolhido para manter a página leve. Nenhuma regra ou progressão foi removida.</span>
                 </div>
-              ));
-            })()}
+                <button type="button" className="btn btn-secondary" onClick={() => setShowFutureAbilities(true)}>
+                  <TalosIcon name="book" size={15} /> Consultar habilidades futuras
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="ability-future-toolbar">
+                  <span>Exibindo {lockedSkills.length} entradas futuras.</span>
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowFutureAbilities(false)}>
+                    Recolher futuras
+                  </button>
+                </div>
+                {lockedByLevel.map(([lvl, abilities]) => (
+                  <section key={lvl} className="ability-level-group future">
+                    <div className="ability-level-heading">
+                      <div><span className="ability-level-number">Nível {lvl}</span></div>
+                      <span className="ability-level-count">{abilities.length} {abilities.length === 1 ? 'entrada' : 'entradas'}</span>
+                    </div>
+                    <div className="ability-level-list">
+                      {abilities.map(ability => (
+                        <article key={`${ability.nivel}-${ability.nome}-${ability.subclasse || 'base'}`} className={`habilidade-row locked ability-kind-${ability.tipo || 'ativa'}`}>
+                          <div className="ability-entry-meta">
+                            {ability.tipo && <span className={`ability-type-badge ${ability.tipo}`}>{ability.tipo}</span>}
+                            {ability.subclasse && <span className="ability-subclass-badge">{ability.subclasse}</span>}
+                          </div>
+                          <h4 className="habilidade-nome">{ability.nome}</h4>
+                          <AbilityDescription ability={ability} />
+                          <EvolucaoTable shikataId={char.shikata} nome={ability.nome} nivelAtual={getAbilityProgressionLevel(char, ability)} />
+                        </article>
+                      ))}
+                    </div>
+                  </section>
+                ))}
+              </>
+            )}
           </div>
         </div>
       )}
 
       {/* Evolução */}
-      <div className="card">
-        <div className="card-header"><span>📈</span><h3>Progressão</h3></div>
+      <div className="card ability-progression-card">
+        <div className="card-header abilities-section-header">
+          <TalosIcon name="progress" size={18} />
+          <h3>Progressão</h3>
+          <InfoTip title="Regras de evolução" align="end" label="Sobre a progressão da Shikata">
+            Cada Shikata recebe 2 pontos de atributo por nível. Ao evoluir, use o dado de vida pós nível 1 indicado pela Shikata. Em multiclasse os modificadores não são somados entre si e apenas 1 nível de Shikata evolui por vez.
+          </InfoTip>
+        </div>
         <div className="card-body">
           <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
             {Array.from({ length: Math.max(20, nivel) }, (_, i) => i + 1).map(n => {
-              const allSkills = SHIKATAS_HABILIDADES[char.shikata] || [];
-              const hasSkill = allSkills.some(h => h.nivel === n);
+              const hasSkill = abilityLevels.has(n);
               const isSubclass = n === shikataData.subclasseNivel;
               return (
                 <div key={n} style={{
@@ -740,16 +698,6 @@ export default function TabHabilidades({ char, update, derived, useOfficialAbili
             <span><span style={{ display: 'inline-block', width: 12, height: 12, background: 'var(--ink-dark)', borderRadius: 2, verticalAlign: 'middle', marginRight: 4 }} />Habilidade nova</span>
             <span><span style={{ display: 'inline-block', width: 12, height: 12, background: 'var(--gold-dark)', borderRadius: 2, verticalAlign: 'middle', marginRight: 4 }} />Subclasse</span>
             <span><span style={{ display: 'inline-block', width: 12, height: 12, background: 'var(--parch-400)', borderRadius: 2, verticalAlign: 'middle', marginRight: 4 }} />Nível normal</span>
-          </div>
-
-          <div style={{ marginTop: 16, padding: '10px 14px', background: 'rgba(253,246,227,0.5)', borderRadius: 'var(--radius-md)', border: '1px solid var(--parch-300)' }}>
-            <div style={{ fontFamily: 'var(--font-heading)', fontSize: '0.7rem', color: 'var(--ink-light)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>Regras de Evolução</div>
-            <ul style={{ paddingLeft: 16, fontSize: '0.82rem', color: 'var(--ink-mid)', lineHeight: 1.7, listStyle: 'disc' }}>
-              <li>Cada shikata recebe <strong>2 pontos de atributo</strong> por nível</li>
-              <li>Ao evoluir: use o <strong>dado de vida pós nv.1</strong> indicado pela shikata</li>
-              <li>Multiclasse: proficiente no novo atributo, mas não soma modificadores</li>
-              <li>Só pode evoluir <strong>1 nível de shikata por vez</strong></li>
-            </ul>
           </div>
         </div>
       </div>

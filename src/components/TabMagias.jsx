@@ -4,6 +4,8 @@ import DiceStage3D from './DiceStage3D';
 import { DAMAGE_SCALINGS, DAMAGE_TYPES, buildCustomDamageRoll, damageTypeLabel, validateDamageFormula } from '../data/damageRuntime';
 import { pushDiceHistory } from '../data/diceRuntime';
 
+import TalosIcon from './TalosIcon';
+import InfoTip from './InfoTip';
 const SPELL_SCHOOLS = ['Fogo', 'Gelo', 'Raio', 'Necromancia', 'Arcano', 'Cura', 'Ilusão', 'Invocação', 'Transmutação', 'Abjuração', 'Outro'];
 const ACTION_OPTIONS = [
   { value: 'full:1', type: 'full', cost: 1, label: '1 ação completa' },
@@ -37,6 +39,21 @@ function normalizedPower(power = {}) {
   const merged = { ...EMPTY_POWER, ...power, usos: Number(power.usos) || 0, maxUsos: Number(power.maxUsos) || 0 };
   if (merged.tipo === 'passiva') { merged.actionType = 'free'; merged.actionCost = 0; }
   return merged;
+}
+
+
+const POWER_TYPE_LABELS = {
+  magia: 'Magia',
+  habilidade: 'Habilidade',
+  passiva: 'Passiva',
+  ritual: 'Ritual',
+};
+
+function powerKind(power = {}) {
+  if (power.tipo === 'passiva') return 'passiva';
+  if (power.actionType === 'reaction') return 'reacao';
+  if (power.actionType === 'bonus') return 'bonus';
+  return 'ativa';
 }
 
 export default function TabMagias({ char, update, derived, registerAbilityUse, spendTurnAction, performRest }) {
@@ -157,22 +174,34 @@ export default function TabMagias({ char, update, derived, registerAbilityUse, s
   };
 
   return (
-    <div className="stack">
-      <div className="card">
-        <div className="card-header">
-          <span>✦</span>
-          <h3>Habilidades e Poderes ({habilidades.length})</h3>
-          <button className="btn btn-secondary btn-sm" style={{ marginLeft: 'auto' }} onClick={() => showForm ? closeForm() : openNew()}>
-            {showForm ? 'Cancelar' : '+ Novo Poder'}
+    <div className="stack powers-page-stack">
+      <div className="card powers-register-card">
+        <div className="card-header powers-section-header">
+          <TalosIcon name="powers" size={18} />
+          <div className="powers-section-title">
+            <h3>Grimório de Poderes</h3>
+            <small>{habilidades.length} {habilidades.length === 1 ? 'registro manual' : 'registros manuais'}</small>
+          </div>
+          <InfoTip title="Poderes manuais" align="end" label="Sobre os poderes manuais">
+            Esta página guarda poderes, rituais e habilidades adicionados manualmente pelo jogador. As habilidades oficiais da Shikata continuam na página Habilidades e não são duplicadas aqui.
+          </InfoTip>
+          <button className="btn btn-secondary btn-sm powers-new-button" onClick={() => showForm ? closeForm() : openNew()}>
+            <TalosIcon name={showForm ? 'reset' : 'upgrade'} size={14} />
+            {showForm ? 'Cancelar edição' : 'Novo poder'}
           </button>
         </div>
-        <div className="card-body">
+        <div className="card-body powers-register-body">
           {showForm && (
-            <div style={{ padding: 14, border: '1px dashed var(--parch-400)', borderRadius: 'var(--radius-md)', marginBottom: 16, background: 'rgba(253,246,227,0.4)' }}>
-              <div style={{ fontFamily: 'var(--font-heading)', fontSize: '0.72rem', color: 'var(--ink-light)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>
-                {editingId ? 'Editar Habilidade / Poder' : 'Nova Habilidade / Poder'}
+            <section className="power-editor-sheet" aria-label={editingId ? 'Editar poder' : 'Novo poder'}>
+              <div className="power-editor-heading">
+                <div>
+                  <span>{editingId ? 'REGISTRO EM EDIÇÃO' : 'NOVO REGISTRO'}</span>
+                  <strong>{editingId ? 'Editar Habilidade / Poder' : 'Registrar Habilidade / Poder'}</strong>
+                </div>
+                <TalosIcon name="book" size={20} />
               </div>
-              <div className="grid2">
+
+              <div className="grid2 power-editor-grid">
                 <div className="field">
                   <label>Nome</label>
                   <input value={novaHabilidade.nome} onChange={e => setNovaHabilidade(p => ({ ...p, nome: e.target.value }))} placeholder="Nome do poder..." />
@@ -192,22 +221,31 @@ export default function TabMagias({ char, update, derived, registerAbilityUse, s
                   </select>
                 </div>
               </div>
-              <div className="grid2" style={{ marginTop: 10 }}>
+
+              <div className="grid2 power-editor-grid">
                 <div className="field">
                   <label>Escola</label>
                   <select value={novaHabilidade.escola} onChange={e => setNovaHabilidade(p => ({ ...p, escola: e.target.value }))}>
-                    {SPELL_SCHOOLS.map(s => <option key={s} value={s}>{s}</option>)}
+                    {SPELL_SCHOOLS.map(school => <option key={school} value={school}>{school}</option>)}
                   </select>
                 </div>
                 <div className="field">
-                  <label>Usos máx. (0 = ∞)</label>
+                  <label className="field-label-with-info">
+                    <span>Usos máximos</span>
+                    <InfoTip title="Controle de usos" label="Sobre usos máximos">Use 0 quando o poder não possuir um limite de usos controlado por esta ficha.</InfoTip>
+                  </label>
                   <input type="number" min={0} value={novaHabilidade.maxUsos}
                     onChange={e => setNovaHabilidade(p => ({ ...p, maxUsos: Number(e.target.value) }))} />
                 </div>
               </div>
 
-              <div className="field" style={{ marginTop: 10 }}>
-                <label>Custo no turno</label>
+              <div className="field">
+                <label className="field-label-with-info">
+                  <span>Custo no turno</span>
+                  <InfoTip title="Economia de ações" label="Sobre o custo no turno">
+                    O poder só será executado quando houver ações suficientes. Reações são registradas, mas o TALOS v6 não define um limite global de reações por turno.
+                  </InfoTip>
+                </label>
                 <select
                   value={`${novaHabilidade.actionType || 'full'}:${Number(novaHabilidade.actionCost) || 0}`}
                   disabled={novaHabilidade.tipo === 'passiva'}
@@ -218,11 +256,16 @@ export default function TabMagias({ char, update, derived, registerAbilityUse, s
                 >
                   {ACTION_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
                 </select>
-                <small>O poder só será executado se houver ações suficientes. Reações são registradas, mas o TALOS v6 não define um limite global de reações por turno.</small>
               </div>
 
-              <div className="power-damage-box">
-                <div className="power-damage-box-title">⚔ Dano automatizado</div>
+              <div className="power-damage-box power-damage-editor">
+                <div className="power-damage-box-title">
+                  <TalosIcon name="dice" size={15} />
+                  <span>Dano automatizado</span>
+                  <InfoTip title="Rolagem automática" align="end" label="Sobre o dano automatizado">
+                    Exemplo: 2d8 + Mod. Força. Ao usar o poder, a ficha resolve o modificador atual e rola os dados na cena 3D automaticamente.
+                  </InfoTip>
+                </div>
                 <div className="grid3">
                   <div className="field">
                     <label>Dados de dano</label>
@@ -245,77 +288,110 @@ export default function TabMagias({ char, update, derived, registerAbilityUse, s
                     </select>
                   </div>
                 </div>
-                <p style={{ marginTop: 8, fontSize: '0.72rem', color: 'var(--ink-faded)', lineHeight: 1.45 }}>
-                  Exemplo: <strong>2d8</strong> + <strong>Mod. Força</strong>. Ao usar o poder, a ficha resolve o modificador atual e rola os dados na cena 3D automaticamente.
-                </p>
               </div>
 
-              <div className="field" style={{ marginTop: 10 }}>
+              <div className="field">
                 <label>Descrição / Efeito</label>
                 <textarea value={novaHabilidade.desc} onChange={e => setNovaHabilidade(p => ({ ...p, desc: e.target.value }))}
-                  placeholder="Alcance, efeito, duração, condição..." rows={2} />
+                  placeholder="Alcance, efeito, duração, condição..." rows={3} />
               </div>
-              {formError && <div className="ability-runtime-warning" style={{ marginTop: 10 }}>{formError}</div>}
-              <div style={{ marginTop: 10, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+
+              {formError && <div className="ability-runtime-warning power-form-warning">{formError}</div>}
+              <div className="power-editor-actions">
                 <button className="btn btn-secondary btn-sm" onClick={closeForm}>Cancelar</button>
-                <button className="btn btn-primary btn-sm" onClick={saveHabilidade}>{editingId ? 'Salvar alterações' : 'Adicionar'}</button>
+                <button className="btn btn-primary btn-sm" onClick={saveHabilidade}>{editingId ? 'Salvar alterações' : 'Adicionar ao grimório'}</button>
               </div>
+            </section>
+          )}
+
+          {runtimeError && (
+            <div className="ability-runtime-feedback error powers-runtime-feedback">
+              <span>!</span>
+              <div><strong>Não foi possível concluir</strong><p>{runtimeError}</p></div>
+              <button type="button" onClick={() => setRuntimeError('')} aria-label="Fechar aviso">×</button>
             </div>
           )}
 
-          {runtimeError && <div className="ability-runtime-feedback error" style={{ marginBottom: 12 }}><span>!</span><div><strong>Rolagem de dano</strong><p>{runtimeError}</p></div><button type="button" onClick={() => setRuntimeError('')}>×</button></div>}
-
           {habilidades.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '30px 0', color: 'var(--ink-faded)' }}>
-              <div style={{ fontSize: '2.5rem', marginBottom: 8 }}>✦</div>
-              <p style={{ fontStyle: 'italic', fontSize: '0.88rem' }}>Nenhuma habilidade cadastrada. Adicione seus poderes acima.</p>
+            <div className="ability-empty-state powers-empty-state">
+              <TalosIcon name="powers" size={38} />
+              <h3>Grimório vazio</h3>
+              <p>Registre aqui poderes, rituais ou habilidades que não fazem parte do catálogo oficial da Shikata.</p>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div className="power-entry-list">
               {habilidades.map(h => {
                 const usosLeft = h.maxUsos > 0 ? h.maxUsos - (h.usos || 0) : null;
                 const esgotada = usosLeft !== null && usosLeft <= 0;
                 const scalingLabel = DAMAGE_SCALINGS.find(option => option.value === h.damageScaling)?.label;
+                const kind = powerKind(h);
+                const longDescription = (h.desc || '').length > 190;
+                const actionUnavailable = h.tipo !== 'passiva' && (
+                  ((h.actionType || 'full') === 'full' && (derived.turnEconomy?.fullRemaining || 0) < Math.max(1, Number(h.actionCost) || 1))
+                  || (h.actionType === 'bonus' && (derived.turnEconomy?.bonusRemaining || 0) < Math.max(1, Number(h.actionCost) || 1))
+                );
+
                 return (
-                  <div key={h.id} style={{ border: `1px solid ${esgotada ? 'var(--parch-300)' : 'var(--parch-400)'}`, borderRadius: 'var(--radius-md)', padding: '12px 14px', opacity: esgotada ? 0.55 : 1, background: 'var(--parch-100)' }}>
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
-                          <span style={{ fontFamily: 'var(--font-heading)', fontSize: '0.9rem', color: 'var(--ink-dark)' }}>{h.nome}</span>
-                          <span className="badge" style={{ background: '#eff6ff', borderColor: '#93c5fd', color: '#1d4ed8' }}>{h.escola}</span>
-                          <span className="badge" style={{ background: '#f5f3ff', borderColor: '#c4b5fd', color: '#7c3aed' }}>{h.tipo}</span>
-                          {h.tipo !== 'passiva' && <span className="ability-runtime-pill action">⏱ {actionLabel(h)}</span>}
-                          {h.maxUsos > 0 && <span style={{ fontSize: '0.72rem', color: esgotada ? 'var(--red-old)' : 'var(--ink-faded)', fontFamily: 'var(--font-heading)' }}>{usosLeft}/{h.maxUsos} usos</span>}
+                  <article key={h.id} className={`habilidade-row power-entry ability-kind-${kind} ${esgotada ? 'depleted' : ''}`}>
+                    <div className="power-entry-heading">
+                      <div className="power-entry-title-block">
+                        <div className="ability-entry-meta">
+                          <span className={`ability-type-badge ${kind}`}>{POWER_TYPE_LABELS[h.tipo] || h.tipo}</span>
+                          <span className="power-school-badge">{h.escola}</span>
+                          {h.maxUsos > 0 && <span className={`ability-uses-badge ${esgotada ? 'depleted' : ''}`}>{usosLeft}/{h.maxUsos} usos</span>}
                         </div>
-                        {(h.damageFormula || h.damageType || h.damageScaling) && (
-                          <div className="power-damage-summary">
-                            {h.damageFormula && <span className="ability-runtime-pill ability-damage-pill">🎲 {h.damageFormula}</span>}
-                            {h.damageType && <span className="ability-runtime-pill">⚔ {damageTypeLabel(h.damageType)}</span>}
-                            {h.damageScaling && <span className="ability-runtime-pill">↗ {scalingLabel}</span>}
-                          </div>
-                        )}
-                        {h.desc && <p style={{ fontSize: '0.82rem', color: 'var(--ink-mid)', fontStyle: 'italic', lineHeight: 1.45, marginTop: 6 }}>{h.desc}</p>}
+                        <h4 className="habilidade-nome">{h.nome}</h4>
                       </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flexShrink: 0 }}>
-                        <button className="btn btn-primary btn-sm" onClick={() => usarHabilidade(h.id)} disabled={esgotada || h.tipo === 'passiva' || ((h.actionType || 'full') === 'full' && (derived.turnEconomy?.fullRemaining || 0) < Math.max(1, Number(h.actionCost) || 1)) || (h.actionType === 'bonus' && (derived.turnEconomy?.bonusRemaining || 0) < Math.max(1, Number(h.actionCost) || 1))}>
-                          {h.damageFormula && h.tipo !== 'passiva' ? '🎲 Usar + Dano' : 'Usar'}
-                        </button>
-                        <button className="btn btn-secondary btn-sm" onClick={() => openEdit(h)}>Editar</button>
-                        {h.maxUsos > 0 && h.usos > 0 && (
-                          <button className="btn btn-secondary btn-sm" onClick={() => resetUsos(h.id)}>↺</button>
-                        )}
-                        <button className="btn btn-danger btn-sm" onClick={() => removeHabilidade(h.id)}>×</button>
-                      </div>
+                      {longDescription && (
+                        <InfoTip title={h.nome} align="end" label={`Ver descrição completa de ${h.nome}`}>
+                          {h.desc}
+                        </InfoTip>
+                      )}
                     </div>
 
-                    {h.maxUsos > 0 && (
-                      <div style={{ display: 'flex', gap: 4, marginTop: 8, flexWrap: 'wrap' }}>
-                        {Array.from({ length: h.maxUsos }, (_, i) => (
-                          <div key={i} style={{ width: 10, height: 10, borderRadius: '50%', background: i < (h.usos || 0) ? 'var(--red-old)' : 'var(--parch-300)', border: '1px solid var(--parch-400)' }} />
-                        ))}
+                    {h.desc && <p className={`habilidade-desc power-entry-description ${longDescription ? 'is-long' : ''}`}>{h.desc}</p>}
+
+                    <div className="power-runtime-facts">
+                      {h.tipo !== 'passiva' && (
+                        <span className="ability-runtime-pill action"><TalosIcon name="clock" size={12} /> {actionLabel(h)}</span>
+                      )}
+                      {h.damageFormula && <span className="ability-runtime-pill ability-damage-pill"><TalosIcon name="dice" size={13} /> {h.damageFormula}</span>}
+                      {h.damageType && <span className="ability-runtime-pill power-damage-type">{damageTypeLabel(h.damageType)}</span>}
+                      {h.damageScaling && <span className="ability-runtime-pill power-scaling-pill">Escala: {scalingLabel}</span>}
+                      {h.tipo === 'passiva' && <span className="ability-runtime-pill ready">Sempre ativa</span>}
+                    </div>
+
+                    <div className="power-entry-control">
+                      <div className="power-use-meter">
+                        <span>CONTROLE DE USO</span>
+                        {h.maxUsos > 0 ? (
+                          <div className="power-use-pips" aria-label={`${h.usos || 0} de ${h.maxUsos} usos consumidos`}>
+                            {Array.from({ length: h.maxUsos }, (_, i) => (
+                              <i key={i} className={i < (h.usos || 0) ? 'spent' : ''} />
+                            ))}
+                          </div>
+                        ) : (
+                          <strong>Sem limite cadastrado</strong>
+                        )}
                       </div>
-                    )}
-                  </div>
+
+                      <div className="power-entry-actions">
+                        {h.tipo !== 'passiva' && (
+                          <button className="btn btn-primary btn-sm" onClick={() => usarHabilidade(h.id)} disabled={esgotada || actionUnavailable}>
+                            <TalosIcon name={h.damageFormula ? 'dice' : 'powers'} size={14} />
+                            {h.damageFormula ? 'Usar + dano' : 'Usar'}
+                          </button>
+                        )}
+                        <button className="btn btn-secondary btn-sm" onClick={() => openEdit(h)}>Editar</button>
+                        {h.maxUsos > 0 && h.usos > 0 && (
+                          <button className="btn btn-secondary btn-sm" onClick={() => resetUsos(h.id)} title="Zerar contador de usos">
+                            <TalosIcon name="reset" size={14} /> Zerar usos
+                          </button>
+                        )}
+                        <button className="btn btn-danger btn-sm" onClick={() => removeHabilidade(h.id)}>Remover</button>
+                      </div>
+                    </div>
+                  </article>
                 );
               })}
             </div>
@@ -323,33 +399,47 @@ export default function TabMagias({ char, update, derived, registerAbilityUse, s
         </div>
       </div>
 
-      <div className="card">
-        <div className="card-header"><span>🌙</span><h3>Descanso</h3></div>
-        <div className="card-body">
-          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            <button className="btn btn-secondary" onClick={() => descansar('short')}>
-              ☀️ Descanso Curto (1h) - +20% HP
+      <div className="card rest-ledger-card">
+        <div className="card-header powers-section-header">
+          <TalosIcon name="rest" size={18} />
+          <div className="powers-section-title">
+            <h3>Descanso</h3>
+            <small>Recuperação e reset de recursos</small>
+          </div>
+          <InfoTip title="Regras de descanso" align="end" label="Sobre descansos">
+            Ambos os descansos recuperam o estado CANSADO. O curto cura 20% da vida máxima; o longo restaura 100% da vida e também reseta os usos dos poderes manuais desta página. Apenas 1 descanso longo por dia.
+          </InfoTip>
+        </div>
+        <div className="card-body rest-ledger-body">
+          <div className="rest-option-grid">
+            <button type="button" className="rest-option short" onClick={() => descansar('short')}>
+              <TalosIcon name="rest" size={20} />
+              <span><small>1 HORA</small><strong>Descanso Curto</strong><em>+20% da vida máxima</em></span>
             </button>
-            <button className="btn btn-primary" onClick={() => descansar('long')}>
-              🌙 Descanso Longo (8h) - HP pleno e usos resetados
+            <button type="button" className="rest-option long" onClick={() => descansar('long')}>
+              <TalosIcon name="moon" size={20} />
+              <span><small>8 HORAS</small><strong>Descanso Longo</strong><em>HP pleno + reset de usos manuais</em></span>
             </button>
           </div>
-          <div style={{ marginTop: 10, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-            <span className={`badge ${derived?.isCansado ? 'fatigue-danger' : ''}`}>Cansaço {derived?.cansacoAtual || 0}/{derived?.limiteCansacoTotal || 0}</span>
-            {derived?.isCansado && <span className="badge fatigue-danger">CANSADO — bônus de acerto desativado</span>}
+          <div className="rest-status-line">
+            <span className={`rest-status-chip ${derived?.isCansado ? 'danger' : ''}`}>Cansaço <strong>{derived?.cansacoAtual || 0}/{derived?.limiteCansacoTotal || 0}</strong></span>
+            {derived?.isCansado && <span className="rest-status-chip danger">CANSADO · bônus de acerto desativado</span>}
           </div>
-          <p style={{ marginTop: 10, fontSize: '0.78rem', color: 'var(--ink-faded)', fontStyle: 'italic' }}>
-            Ambos os descansos recuperam o estado CANSADO. O curto cura 20% da vida máxima; o longo restaura 100% da vida e também reseta os usos dos poderes manuais desta aba. Apenas 1 descanso longo por dia.
-          </p>
         </div>
       </div>
 
-      <div className="card">
-        <div className="card-header"><span>📝</span><h3>Notas Arcanas</h3></div>
-        <div className="card-body">
+      <div className="card arcane-notes-card">
+        <div className="card-header powers-section-header">
+          <TalosIcon name="notes" size={18} />
+          <div className="powers-section-title">
+            <h3>Notas Arcanas</h3>
+            <small>Anotações livres do personagem</small>
+          </div>
+        </div>
+        <div className="card-body arcane-notes-body">
           <textarea value={char.notasMagia || ''} onChange={e => update('notasMagia', e.target.value)}
             placeholder="Magias aprendidas, combinações, rituais conhecidos, notas de poderes..."
-            rows={5} />
+            rows={6} />
         </div>
       </div>
       <DiceStage3D result={damageRoll} showDock={false} />

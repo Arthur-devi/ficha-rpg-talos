@@ -3,6 +3,8 @@ import { ATTRIBUTES, PERICIAS_INFO, SHIKATAS } from '../data/system';
 import { SKILL_TEST_GUIDANCE, UNTRAINED_DISADVANTAGE_SKILLS, allSkills, characterProficiencySources, initiativeBonusFromLuta, professionSkillSpecialty, skillModifier } from '../data/skillRuntime';
 import { DEATH_SAVE_TABLE_RULE, INSPIRATION_TABLE_RULE } from '../data/tableRules';
 import DiceStage3D from './DiceStage3D';
+import TalosIcon from './TalosIcon';
+import InfoTip from './InfoTip';
 
 const QUICK_ROLLS = ['1d2', '1d4', '1d6', '1d8', '1d10', '1d12', '1d20', '1d100', '2d6', '2d8', '2d10'];
 const HISTORY_LIMIT = 50;
@@ -401,7 +403,7 @@ export default function TabDados({ char, update, derived, spendTurnAction, rollD
 
                 <p className="death-save-rule"><strong>{DEATH_SAVE_TABLE_RULE.successesToRecover} sucessos</strong> → recupera {DEATH_SAVE_TABLE_RULE.recoveryHp} HP e sai de MORRENDO. <strong>{DEATH_SAVE_TABLE_RULE.failuresToDie} falhas</strong> → MORTE. Qualquer cura que deixe o HP acima de 0 antes da morte zera ambos os contadores. Sem modificadores e sem Inspiração.</p>
                 <div className="death-save-actions">
-                  <button type="button" className="btn btn-primary death-save-roll-btn" onClick={handleDeathSave}>🎲 Girar Teste de Vontade</button>
+                  <button type="button" className="btn btn-primary death-save-roll-btn" onClick={handleDeathSave}><TalosIcon name="dice" size={16} /> Girar Teste de Vontade</button>
                   {deathState.lastRoll != null && <span className="death-save-last">Último d20: <strong>{deathState.lastRoll}</strong></span>}
                 </div>
               </>
@@ -464,53 +466,56 @@ export default function TabDados({ char, update, derived, spendTurnAction, rollD
         </div>
       </div>
 
-      <div className="card">
-        <div className="card-header"><span>⚔</span><h3>Acerto da Shikata</h3></div>
+      <div className="card shikata-attack-card">
+        <div className="card-header">
+          <TalosIcon name="combat" size={18} />
+          <h3>Acerto da Shikata</h3>
+          {shikataData && attackModifierOptions.length > 0 && (
+            <InfoTip className="card-header-info" align="end" title="Regra de acerto TALOS" label="Regra completa do acerto da Shikata">
+              <span>Ataque normal = d20 + modificador principal da Shikata. Em combate, consome 1 ação completa; fora de combate, nenhuma ação é consumida. O Monge pode usar ação bônus para uma ação marcial conforme ESSÊNCIA.</span>
+              <span className="info-tip-paragraph">Ao esgotar o Limite de Cansaço, o ataque continua disponível, mas o bônus do modificador deixa de ser somado. A Inspiração armada na página também pode ser usada nesta rolagem.</span>
+              {attackModifierOptions.some(option => option.sourceAmbiguous) && (
+                <span className="info-tip-paragraph info-tip-warning">O v6 lista esta Shikata com mais de um modificador ligado por “e”, mas não explicita neste trecho se eles são somados. A ficha mantém escolha manual para não inventar a regra.</span>
+              )}
+            </InfoTip>
+          )}
+        </div>
         <div className="card-body">
           {!shikataData ? (
-            <p style={{ color: 'var(--ink-faded)', fontStyle: 'italic', fontSize: '0.84rem' }}>Selecione uma Shikata em Identidade para liberar o ataque TALOS.</p>
+            <p className="sheet-empty-note">Selecione uma Shikata em Personagem para liberar o ataque TALOS.</p>
           ) : attackModifierOptions.length === 0 ? (
-            <p style={{ color: 'var(--ink-faded)', fontStyle: 'italic', fontSize: '0.84rem' }}>O modificador de acerto desta Shikata ainda não está estruturado.</p>
+            <p className="sheet-empty-note">O modificador de acerto desta Shikata ainda não está estruturado.</p>
           ) : (
-            <>
-              <div style={{ display: 'grid', gridTemplateColumns: attackModifierOptions.length > 1 ? 'minmax(180px, 1fr) minmax(180px, 1fr)' : 'minmax(180px, 1fr)', gap: 12, alignItems: 'end' }}>
-                <div className="field">
-                  <label>Modificador de acerto</label>
-                  {attackModifierOptions.length > 1 ? (
-                    <select value={selectedAttackModifier?.key || ''} onChange={e => setAttackModifierKey(e.target.value)}>
-                      {attackModifierOptions.map(option => (
-                        <option key={option.key} value={option.key}>{option.label} ({option.modifier >= 0 ? '+' : ''}{option.modifier})</option>
-                      ))}
-                    </select>
-                  ) : (
-                    <div style={{ minHeight: 38, display: 'flex', alignItems: 'center', padding: '0 11px', border: '1px solid var(--parch-300)', borderRadius: 'var(--radius-sm)', background: 'rgba(253,246,227,0.5)', fontFamily: 'var(--font-heading)', color: 'var(--ink-dark)' }}>
-                      {selectedAttackModifier?.label} ({selectedAttackModifier?.modifier >= 0 ? '+' : ''}{selectedAttackModifier?.modifier || 0})
-                    </div>
-                  )}
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                  {attackActionOptions.length > 1 && (
-                    <select value={selectedAttackAction.type} onChange={e => setAttackActionMode(e.target.value)} title="Forma de ataque neste turno">
-                      {attackActionOptions.map(option => <option key={option.type} value={option.type}>{option.label}</option>)}
-                    </select>
-                  )}
-                  <button className="btn btn-primary" onClick={handleClassAttack} disabled={attackActionBlocked}>{char.originState?.precisionReady ? 'Usar ataque CERTEIRO' : 'Rolar ataque TALOS'}</button>
-                  <span className={`badge ${derived.isCansado ? 'fatigue-danger' : ''}`}>
-                    {derived.isCansado ? 'CANSADO: bônus +0' : `Bônus ativo: ${selectedAttackModifier?.modifier >= 0 ? '+' : ''}${selectedAttackModifier?.modifier || 0}`}
-                  </span>
-                  <span className={`badge ${attackActionBlocked ? 'fatigue-danger' : ''}`}>{combatActive ? selectedAttackAction.label.toUpperCase() : 'FORA DE COMBATE · AÇÃO NÃO CONSUMIDA'}</span>
-                  {char.originState?.precisionReady && <span className="badge" style={{ background: '#ecfdf5', borderColor: '#16a34a', color: '#166534' }}>PRECISÃO ARMADA · PRÓXIMO ATAQUE CERTEIRO</span>}
-                </div>
-              </div>
-              <p style={{ marginTop: 10, fontSize: '0.76rem', color: 'var(--ink-faded)', lineHeight: 1.45 }}>
-                Ataque normal = d20 + modificador principal da Shikata e, em combate, consome 1 ação completa. Fora de combate nenhuma ação é consumida. O Monge pode escolher ação bônus para uma ação marcial, conforme ESSÊNCIA. Ao esgotar o Limite de Cansaço, a ficha mantém o ataque disponível, mas remove automaticamente esse bônus. A Inspiração armada abaixo também pode ser usada nesta rolagem.
-                {attackModifierOptions.some(option => option.sourceAmbiguous) && (
-                  <span style={{ display: 'block', marginTop: 5, color: '#92400e' }}>
-                    O TALOS v6 lista esta Shikata com mais de um modificador ligado por “e”, mas não explicita neste trecho se eles são somados. A ficha deixa a escolha manual para não inventar a regra.
-                  </span>
+            <div className="shikata-attack-layout">
+              <div className="field">
+                <label>Modificador de acerto</label>
+                {attackModifierOptions.length > 1 ? (
+                  <select value={selectedAttackModifier?.key || ''} onChange={e => setAttackModifierKey(e.target.value)}>
+                    {attackModifierOptions.map(option => (
+                      <option key={option.key} value={option.key}>{option.label} ({option.modifier >= 0 ? '+' : ''}{option.modifier})</option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="shikata-attack-modifier">
+                    <span>{selectedAttackModifier?.label}</span>
+                    <strong className={`semantic-value ${Number(selectedAttackModifier?.modifier || 0) >= 0 ? 'is-positive' : 'is-negative'}`}>{selectedAttackModifier?.modifier >= 0 ? '+' : ''}{selectedAttackModifier?.modifier || 0}</strong>
+                  </div>
                 )}
-              </p>
-            </>
+              </div>
+              <div className="shikata-attack-actions">
+                {attackActionOptions.length > 1 && (
+                  <select value={selectedAttackAction.type} onChange={e => setAttackActionMode(e.target.value)} title="Forma de ataque neste turno">
+                    {attackActionOptions.map(option => <option key={option.type} value={option.type}>{option.label}</option>)}
+                  </select>
+                )}
+                <button className="btn btn-primary" onClick={handleClassAttack} disabled={attackActionBlocked}>{char.originState?.precisionReady ? 'Usar ataque CERTEIRO' : 'Rolar ataque TALOS'}</button>
+                <span className={`badge semantic-badge ${derived.isCansado ? 'is-negative fatigue-danger' : 'is-positive'}`}>
+                  {derived.isCansado ? 'CANSADO · bônus +0' : `Bônus ativo ${selectedAttackModifier?.modifier >= 0 ? '+' : ''}${selectedAttackModifier?.modifier || 0}`}
+                </span>
+                <span className={`badge ${attackActionBlocked ? 'fatigue-danger' : ''}`}>{combatActive ? selectedAttackAction.label.toUpperCase() : 'FORA DE COMBATE · AÇÃO NÃO CONSUMIDA'}</span>
+                {char.originState?.precisionReady && <span className="badge semantic-badge is-positive">PRECISÃO ARMADA · PRÓXIMO ATAQUE CERTEIRO</span>}
+              </div>
+            </div>
           )}
         </div>
       </div>
@@ -555,7 +560,7 @@ export default function TabDados({ char, update, derived, spendTurnAction, rollD
           </div>
 
           <div className="skill-test-actions">
-            <button type="button" className="btn btn-primary" onClick={handleSkillTest}>🎲 Rolar teste de {selectedSkill?.name}</button>
+            <button type="button" className="btn btn-primary" onClick={handleSkillTest}><TalosIcon name="dice" size={16} /> Rolar teste de {selectedSkill?.name}</button>
             <span className="skill-formula-preview">
               1d20 {selectedSkillModifier + initiativeExtra >= 0 ? '+' : '−'} {Math.abs(selectedSkillModifier + initiativeExtra)}{Number(skillAdjustment) ? ` ${Number(skillAdjustment) >= 0 ? '+' : '−'} ${Math.abs(Number(skillAdjustment))}` : ''}
             </span>

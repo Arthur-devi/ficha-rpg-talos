@@ -20,6 +20,7 @@ const defaultCharacter = {
   // Identity
   name: '',
   player: '',
+  portrait: '',
   nivel: 1,
   origem: '',
   shikata: '',

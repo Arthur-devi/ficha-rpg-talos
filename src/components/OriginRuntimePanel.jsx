@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import TalosIcon from './TalosIcon';
 import { ATTRIBUTES, ORIGENS, PERICIAS_BY_ATTR } from '../data/system';
 import { DRAGON_ANCESTORS, ELEMENTAL_ELEMENTS, SLIME_PATHS, SLIME_PATH_INFO, getOriginAbilityDefs, metamorphEffectKeys, normalizeOriginState, originProficiencyLimit, vampireHpBonus, vampireDuration, werewolfNaturalFormula } from '../data/originRuntime';
 import DiceStage3D from './DiceStage3D';
@@ -34,7 +35,7 @@ function AbilityCard({ def, state, onUse, combatActive, formIndex }) {
         {remaining != null && <b>{remaining}/{def.maxUses}</b>}
       </div>
       <div className="origin-ability-meta">
-        {def.damage?.formula && <span>🎲 {def.damage.formula} · {def.damage.type}</span>}
+        {def.damage?.formula && <span className="icon-text"><TalosIcon name="dice" size={13} /> {def.damage.formula} · {def.damage.type}</span>}
         {def.defaultAction === 'bonus' && <span>AÇÃO BÔNUS</span>}
         {def.defaultAction === 'free' && <span>SEM AÇÃO</span>}
         {!def.defaultAction || def.defaultAction === 'full' ? <span>{combatActive ? 'AÇÃO COMPLETA' : 'FORA DE COMBATE'}</span> : null}
@@ -42,7 +43,7 @@ function AbilityCard({ def, state, onUse, combatActive, formIndex }) {
       </div>
       {def.damage?.note && <small className="origin-ability-note">{def.damage.note}</small>}
       <button type="button" className="btn btn-primary btn-sm" disabled={disabled} onClick={() => onUse(def.id, formIndex != null ? { formIndex } : {})}>
-        {def.damage?.formula ? '🎲 Usar + rolar' : '✦ Usar habilidade'}
+        {def.damage?.formula ? 'Usar + rolar' : 'Usar habilidade'}
       </button>
     </div>
   );
@@ -52,7 +53,7 @@ export default function OriginRuntimePanel({
   char,
   derived,
   update,
-  useOriginAbility,
+  useOriginAbility: triggerOriginAbility,
   attemptGuardianRevestimento,
   rollThunganItem,
   setWerewolfForm,
@@ -75,7 +76,7 @@ export default function OriginRuntimePanel({
     setFeedback({ ok: !!result.ok, message: result.message || '' });
     if (result.roll) setDiceRoll(result.roll);
   };
-  const handleUse = (id, options) => setResult(useOriginAbility?.(id, options));
+  const handleUse = (id, options) => setResult(triggerOriginAbility?.(id, options));
 
   const toggleProficiency = skill => {
     const current = state.proficiencies || [];
@@ -109,18 +110,12 @@ export default function OriginRuntimePanel({
 
   return (
     <>
-      <div className="card origin-runtime-card">
-        <div className="card-header"><span>🧬</span><h3>Origem — Mecânicas v6</h3></div>
-        <div className="card-body">
-          <div className="origin-runtime-summary">
-            <div><strong>{origin.name}</strong><span>{origin.habilidade}</span></div>
-            <div className="origin-runtime-badges">
-              <span>Deslocamento: {derived?.originEffects?.deslocamentoBase == null ? 'NÃO ESPECIFICADO' : `${derived.originEffects.deslocamentoBase}sqm`}</span>
-              <span>Cansaço: {derived?.originEffects?.limiteCansacoBase == null ? (origin.id === 'meio-orc' ? 'ESCOLHA A FUSÃO' : 'NÃO ESPECIFICADO') : `${derived.originEffects.limiteCansacoBase}${origin.id === 'meio-orc' ? ' · FUSÃO' : ''}`}</span>
-              {derived?.gnomeLuckHpBonus > 0 && <span>Sortudo!: +{derived.gnomeLuckHpBonus} HP</span>}
-            </div>
-          </div>
-
+      <details className="origin-runtime-details">
+        <summary>
+          <span className="origin-runtime-details-title"><TalosIcon name="engine" size={15} /> Mecânicas especiais da herança</span>
+          <small>Abrir somente quando precisar usar ou configurar uma regra específica da Origem.</small>
+        </summary>
+        <div className="origin-runtime-body">
           {derived?.originEffects?.missing?.length > 0 && (
             <div className="origin-source-warning"><strong>Fonte v6:</strong> {derived.originEffects.missing.join(' · ')}. Use o ajuste manual da ficha quando necessário; nenhum valor foi inventado.</div>
           )}
@@ -182,7 +177,7 @@ export default function OriginRuntimePanel({
 
           {origin.id === 'thungan' && (
             <ChoiceBox label="Sorte Amaldiçoada">
-              <div className="origin-inline-actions"><button className="btn btn-primary btn-sm" type="button" disabled={state.thunganRoll != null} onClick={() => setResult(rollThunganItem?.())}>🎲 Rolar 1d20 do item</button>{state.thunganRoll != null && <strong>Resultado: {state.thunganRoll}</strong>}</div>
+              <div className="origin-inline-actions"><button className="btn btn-primary btn-sm" type="button" disabled={state.thunganRoll != null} onClick={() => setResult(rollThunganItem?.())}><TalosIcon name="dice" size={15} /> Rolar 1d20 do item</button>{state.thunganRoll != null && <strong>Resultado: {state.thunganRoll}</strong>}</div>
               <input value={state.thunganItem} onChange={e => updateState('thunganItem', e.target.value)} placeholder="Equipamento raro amaldiçoado definido pelo mestre" />
               <small>O trecho de Origem do v6 manda rolar 1d20, mas não fornece ali a tabela de conversão do resultado; a ficha não inventa o item.</small>
             </ChoiceBox>
@@ -247,7 +242,7 @@ export default function OriginRuntimePanel({
             <div className="origin-ability-card">
               <div className="origin-ability-head"><div><strong>Revestimento</strong><span>1 ativação por descanso longo · até 3 tentativas/turno · d20 &gt; 10 ativa.</span></div><b>{state.guardianAttemptsTurn}/3 tent.</b></div>
               {state.guardianCaBonus > 0 && <div className="origin-active-effect">+{state.guardianCaBonus} CA {state.guardianCriticalCombat ? 'ATÉ O FIM DO COMBATE' : `· ${state.guardianTurnsRemaining} turno(s)`}</div>}
-              <button type="button" className="btn btn-primary btn-sm" disabled={!combatActive || state.guardianAttemptsTurn >= 3 || (state.originAbilityUsage?.revestimento?.used || 0) >= 1} onClick={() => setResult(attemptGuardianRevestimento?.())}>🎲 Tentar Revestimento</button>
+              <button type="button" className="btn btn-primary btn-sm" disabled={!combatActive || state.guardianAttemptsTurn >= 3 || (state.originAbilityUsage?.revestimento?.used || 0) >= 1} onClick={() => setResult(attemptGuardianRevestimento?.())}><TalosIcon name="dice" size={15} /> Tentar Revestimento</button>
             </div>
           )}
 
@@ -281,7 +276,7 @@ export default function OriginRuntimePanel({
 
           {feedback && <div className={`origin-feedback ${feedback.ok ? 'success' : 'error'}`}><strong>{feedback.ok ? '✓' : '!'}</strong><span>{feedback.message}</span><button type="button" onClick={() => setFeedback(null)}>×</button></div>}
         </div>
-      </div>
+      </details>
       <DiceStage3D result={diceRoll} showDock={false} onClose={() => setDiceRoll(null)} />
     </>
   );
