@@ -171,6 +171,7 @@ export default function TabDados({ char, update, derived, completePendingLevelUp
   const selectedSkill = skillCatalog.find(skill => skill.name === skillName) || skillCatalog[0];
   const selectedSkillAttr = ATTRIBUTES.find(attribute => attribute.key === selectedSkill?.attributeKey);
   const selectedSkillModifier = selectedSkill ? skillModifier(derived, selectedSkill.name) : 0;
+  const selectedReiFalsoBonus = selectedSkill ? (Number(derived.reiFalsoSkillBonuses?.[selectedSkill.name]) || 0) : 0;
   const selectedSkillSources = selectedSkill ? characterProficiencySources(char, derived, selectedSkill.name) : [];
   const selectedSkillProficient = selectedSkillSources.length > 0;
   const initiativeExtra = selectedSkill?.name === 'Iniciativa' ? initiativeBonusFromLuta(char, derived) : 0;
@@ -233,6 +234,7 @@ export default function TabDados({ char, update, derived, completePendingLevelUp
         skillName: selectedSkill.name,
         skillAttribute: selectedSkillAttr?.label || selectedSkill.attributeKey,
         skillModifier: selectedSkillModifier,
+        reiFalsoBonus: selectedReiFalsoBonus,
         skillAdjustment: manual,
         initiativeBonus: initiativeExtra,
         skillProficient: selectedSkillProficient,
@@ -580,6 +582,7 @@ export default function TabDados({ char, update, derived, completePendingLevelUp
                 {selectedSkillProficient ? `PROFICIENTE · ${selectedSkillSources.join(' + ')}` : 'SEM PROFICIÊNCIA'}
               </span>
               {initiativeExtra > 0 && <span className="badge skill-trained">LUTA: +2 INICIATIVA</span>}
+              {selectedReiFalsoBonus > 0 && <span className="badge skill-trained">REI FALSO: +{selectedReiFalsoBonus}</span>}
               {selectedSkillGuidance?.difficulty && <span className="badge">DT / REFERÊNCIA: {selectedSkillGuidance.difficulty}</span>}
               {selectedSkillSpecialty && <span className="badge">ESPECIALIDADE: {selectedSkillSpecialty}</span>}
             </div>

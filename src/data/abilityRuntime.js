@@ -254,9 +254,11 @@ export function getAbilityRuntimeSpec(shikataId, ability, level, subclasse) {
       ? 'O Controle do Sangue'
       : null;
 
+  const isLadinoMaestriaTatica = shikataId === 'ladino' && normalizeText(ability.nome) === 'maestria tatica';
+
   return {
     key: getAbilityKey(shikataId, ability.nome),
-    trackable: ability.tipo !== 'passiva',
+    trackable: ability.tipo !== 'passiva' && !isLadinoMaestriaTatica,
     maxUses: usage.maxUses,
     resetType: usage.resetType,
     resetLabel: usage.resetType ? PERIOD_LABELS[usage.resetType] : null,

@@ -112,7 +112,7 @@ export function getAbilityActionSpec(shikataId, ability, level) {
 export function getBaseTurnEconomy(char) {
   const ladinoLevel = getShikataLevel(char, 'ladino');
   const fullBase = 2;
-  // Maestria Tática: qualquer personagem que tenha Ladino nv.5+ mantém +1 ação bônus.
+  // Maestria Tática é um bônus permanente: não possui ativação/uso próprio.
   const bonusBase = 1 + (ladinoLevel >= 5 ? 1 : 0);
   return { fullBase, bonusBase };
 }

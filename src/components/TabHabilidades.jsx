@@ -6,6 +6,7 @@ import { buildOfficialDamageRoll, damageTypeLabel } from '../data/damageRuntime'
 import { pushDiceHistory } from '../data/diceRuntime';
 import { canSpendAction } from '../data/turnRuntime';
 import { applyElementalOriginToDamageRoll } from '../data/originRuntime';
+import { allSkills } from '../data/skillRuntime';
 import DiceStage3D from './DiceStage3D';
 import AbilityUseOverlay from './AbilityUseOverlay';
 import { getShikataLevel, getShikataSubclass } from '../data/multiclassRuntime';
@@ -67,19 +68,49 @@ function EvolucaoTable({ shikataId, nome, nivelAtual }) {
 }
 
 
-function AbilityDescription({ ability }) {
+function formatSigned(value) {
+  const number = Number(value) || 0;
+  return number >= 0 ? `+${number}` : `${number}`;
+}
+
+function AbilityDescription({ ability, char, derived, live = false }) {
   const description = ability?.desc || '';
   const isLong = description.length > 230;
   if (!description) return null;
+
+  let liveRule = null;
+  if (live && char?.shikata === 'ladino' && ability?.nome === 'CRÍTICO UNILATERAL') {
+    const dexterity = Number(derived?.attrsTotal?.destreza) || 0;
+    const steps = Math.floor(Math.max(0, dexterity) / 5);
+    liveRule = (
+      <div className="ability-live-rule ladino-critical-live">
+        <strong>Bônus crítico atual: +{derived?.ladinoCriticalBonusPercent || 20}%</strong>
+        <span>DES total {dexterity} · 20% base + {steps} × 20% por cada 5 DES</span>
+      </div>
+    );
+  }
+
+  if (live && char?.shikata === 'ladino' && ability?.nome === 'INTELIGÊNCIA DO INVISÍVEL' && derived?.invisibleIntelligenceActive) {
+    liveRule = (
+      <div className="ability-live-rule ladino-int-live">
+        <strong>Modificador de INT ativo: {formatSigned(derived?.modInt)}</strong>
+        <span>Base {formatSigned(derived?.baseModInt)} → ×2; resultados negativos viram positivos e o mínimo é +1.</span>
+      </div>
+    );
+  }
+
   return (
-    <div className={`ability-description-row ${isLong ? 'compact' : ''}`}>
-      <p className="habilidade-desc">{description}</p>
-      {isLong && (
-        <InfoTip title={ability.nome} align="end" label={`Ver regra completa de ${ability.nome}`}>
-          {description}
-        </InfoTip>
-      )}
-    </div>
+    <>
+      <div className={`ability-description-row ${isLong ? 'compact' : ''}`}>
+        <p className="habilidade-desc">{description}</p>
+        {isLong && (
+          <InfoTip title={ability.nome} align="end" label={`Ver regra completa de ${ability.nome}`}>
+            {description}
+          </InfoTip>
+        )}
+      </div>
+      {liveRule}
+    </>
   );
 }
 
@@ -246,13 +277,158 @@ function BruxoResources({ char, update }) {
 }
 
 
-function AbilityRuntimePanel({ ability, char, onUse, onReset, onFeedback }) {
+function ReiFalsoRuntimePanel({ ability, char, derived, onUse, onReset, onFeedback, update }) {
+  const skills = useMemo(() => allSkills().map(skill => skill.name), []);
+  const pool = Math.max(0, Number(derived?.reiFalsoModifierPool) || 0);
+  const [rows, setRows] = useState(() => [{ skill: '', amount: pool }]);
+  const progressionLevel = getAbilityProgressionLevel(char, ability);
+  const spec = getAbilityRuntimeSpec(char.shikata, ability, progressionLevel, char.subclasse);
+  const record = char.officialAbilityUsage?.[spec.key] || {};
+  const availability = getAbilityAvailability(spec, record, char.abilityTimeline, {
+    performance: char.classResources?.bardo?.performance || 0,
+    ml: char.classResources?.hemomante?.reservaSangue || 0,
+  });
+  const actionOptions = spec.actionSpec?.options || [{ type: 'bonus', cost: 1, label: 'Ação bônus' }];
+  const defaultAction = actionOptions.find(option => option.type === 'bonus') || actionOptions[0];
+  const [actionMode, setActionMode] = useState(defaultAction.type);
+  const selectedAction = actionOptions.find(option => option.type === actionMode) || defaultAction;
+  const actionAvailability = canSpendAction(char, selectedAction);
+
+  const normalizedRows = rows.map(row => ({
+    skill: String(row.skill || '').trim(),
+    amount: Math.max(0, Math.trunc(Number(row.amount) || 0)),
+  }));
+  const selectedSkills = normalizedRows.filter(row => row.skill).map(row => row.skill);
+  const hasDuplicates = new Set(selectedSkills).size !== selectedSkills.length;
+  const allocated = normalizedRows.reduce((sum, row) => sum + row.amount, 0);
+  const remaining = pool - allocated;
+  const rowsValid = pool === 0 || normalizedRows.every(row => row.skill && row.amount > 0);
+  const canUse = availability.available && actionAvailability.ok && rowsValid && !hasDuplicates && allocated === pool;
+  const activeState = derived?.reiFalsoState || {};
+  const activeBonuses = derived?.reiFalsoSkillBonuses || {};
+
+  const updateRow = (index, patch) => {
+    setRows(current => current.map((row, rowIndex) => rowIndex === index ? { ...row, ...patch } : row));
+  };
+
+  const removeRow = index => {
+    setRows(current => current.length <= 1 ? current : current.filter((_, rowIndex) => rowIndex !== index));
+  };
+
+  const handleActivate = () => {
+    const allocations = Object.fromEntries(normalizedRows.filter(row => row.skill && row.amount > 0).map(row => [row.skill, row.amount]));
+    const result = onUse?.(ability, { reiFalsoAllocations: allocations, actionMode: selectedAction.type });
+    if (!result) return;
+    onFeedback?.({ ok: result.ok, message: result.message, detail: result });
+  };
+
+  const handleEnd = () => {
+    update?.('classResources.ladino.reiFalso', {
+      ...activeState,
+      active: false,
+      bonuses: {},
+    });
+    onFeedback?.({ ok: true, message: 'REI FALSO encerrado antes do prazo.', detail: null });
+  };
+
+  if (derived?.reiFalsoActive) {
+    return (
+      <div className="ability-runtime rei-falso-runtime active">
+        <div className="ability-runtime-meta">
+          <span className="ability-runtime-pill ready">EFEITO ATIVO</span>
+          <span className="ability-runtime-pill usage">Pool aplicado: {activeState.totalPool || pool}</span>
+          <span className="ability-runtime-pill action">Expira ao iniciar o dia {activeState.expiresDay || 'seguinte'}</span>
+        </div>
+        <div className="rei-falso-active-grid">
+          {Object.entries(activeBonuses).map(([skill, bonus]) => (
+            <span key={skill}><strong>{skill}</strong><b>+{bonus}</b></span>
+          ))}
+        </div>
+        <div className="ability-runtime-note">Os bônus acima já estão somados automaticamente às rolagens de perícia.</div>
+        <div className="ability-runtime-actions">
+          <button type="button" className="btn btn-secondary btn-sm" onClick={handleEnd}>Encerrar efeito</button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`ability-runtime rei-falso-runtime ${!availability.available ? 'blocked' : ''}`}>
+      <div className="ability-runtime-meta">
+        <span className="ability-runtime-pill usage">Pool atual: {pool}</span>
+        <span className={`ability-runtime-pill ${availability.available ? 'ready' : 'danger'}`}>
+          {spec.maxUses != null ? `${availability.remaining}/${spec.maxUses} uso(s)` : 'Uso disponível'}
+        </span>
+        <span className={`ability-runtime-pill action ${!actionAvailability.ok ? 'danger' : ''}`}>{char.abilityTimeline?.combatActive ? selectedAction.label : 'FORA DE COMBATE · AÇÃO LIVRE'}</span>
+        <span className="ability-runtime-pill fatigue">+1 Cansaço ao ativar</span>
+      </div>
+
+      <div className="rei-falso-breakdown">
+        <small>Pool = soma dos modificadores atuais:</small>
+        <span>FOR {formatSigned(derived?.modForca)}</span>
+        <span>MAG {formatSigned(derived?.modMagia)}</span>
+        <span>CON {formatSigned(derived?.modCon)}</span>
+        <span>INT {formatSigned(derived?.modInt)}</span>
+        <span>PER {formatSigned(derived?.modPer)}</span>
+        <span>DES {formatSigned(derived?.modDes)}</span>
+        <span>CAR {formatSigned(derived?.modCar)}</span>
+        <span>DEF {formatSigned(derived?.modDef)}</span>
+        <span>SOR {formatSigned(derived?.modSor)}</span>
+      </div>
+
+      {actionOptions.length > 1 && (
+        <div className="ability-target-row">
+          <label>Forma de ativação</label>
+          <select value={selectedAction.type} onChange={event => setActionMode(event.target.value)}>
+            {actionOptions.map(option => <option key={`${option.type}-${option.cost}`} value={option.type}>{option.label}</option>)}
+          </select>
+        </div>
+      )}
+
+      <div className="rei-falso-allocation">
+        <div className="rei-falso-allocation-head">
+          <div>
+            <strong>Distribuição entre perícias</strong>
+            <small>Distribua exatamente {pool} ponto(s). Restante: {remaining}.</small>
+          </div>
+          <button type="button" className="btn btn-secondary btn-sm" onClick={() => setRows(current => [...current, { skill: '', amount: Math.max(0, remaining) }])} disabled={rows.length >= skills.length}>+ Perícia</button>
+        </div>
+        {rows.map((row, index) => (
+          <div className="rei-falso-allocation-row" key={index}>
+            <select value={row.skill} onChange={event => updateRow(index, { skill: event.target.value })}>
+              <option value="">Selecione uma perícia</option>
+              {skills.map(skill => <option key={skill} value={skill}>{skill}</option>)}
+            </select>
+            <input type="number" min="0" max={pool} value={row.amount} onChange={event => updateRow(index, { amount: Math.max(0, Math.trunc(Number(event.target.value) || 0)) })} aria-label={`Pontos em ${row.skill || 'perícia'}`} />
+            <button type="button" className="btn btn-secondary btn-sm" onClick={() => removeRow(index)} disabled={rows.length <= 1}>×</button>
+          </div>
+        ))}
+      </div>
+
+      {hasDuplicates && <div className="ability-runtime-warning">A mesma perícia não pode aparecer em mais de uma linha.</div>}
+      {allocated !== pool && <div className="ability-runtime-warning">{remaining > 0 ? `Faltam distribuir ${remaining} ponto(s).` : `A distribuição ultrapassou o pool em ${Math.abs(remaining)} ponto(s).`}</div>}
+      {!actionAvailability.ok && <div className="ability-runtime-warning">{actionAvailability.message}</div>}
+      {!availability.available && <div className="ability-runtime-warning">REI FALSO já foi usado. O uso volta após um descanso longo.</div>}
+      <div className="ability-runtime-actions">
+        <button type="button" className="btn btn-primary btn-sm" onClick={handleActivate} disabled={!canUse}>Ativar REI FALSO</button>
+        {(record.used > 0 || record.lastUsedDay || record.lastUsedTurn) && (
+          <button type="button" className="btn btn-secondary btn-sm" onClick={() => onReset?.(spec.key)} title="Corrigir o contador desta habilidade">Corrigir contador</button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AbilityRuntimePanel({ ability, char, derived, onUse, onReset, onFeedback, update }) {
   const [target, setTarget] = useState('');
   const [useMlEnhancement, setUseMlEnhancement] = useState(false);
   const [damageVariantId, setDamageVariantId] = useState('');
   const [actionMode, setActionMode] = useState('');
   const progressionLevel = getAbilityProgressionLevel(char, ability);
   const spec = getAbilityRuntimeSpec(char.shikata, ability, progressionLevel, char.subclasse);
+  if (char.shikata === 'ladino' && ability.nome === 'REI FALSO') {
+    return <ReiFalsoRuntimePanel ability={ability} char={char} derived={derived} onUse={onUse} onReset={onReset} onFeedback={onFeedback} update={update} />;
+  }
   if (!spec.trackable) return null;
 
   const actionOptions = spec.actionSpec?.options || [{ type: 'full', cost: 1, label: 'Ação completa' }];
@@ -591,14 +767,16 @@ export default function TabHabilidades({ char, update, derived, useOfficialAbili
                           {ability.subclasse && <span className="ability-subclass-badge">{ability.subclasse}</span>}
                         </div>
                         <h4 className="habilidade-nome">{ability.nome}</h4>
-                        <AbilityDescription ability={ability} />
+                        <AbilityDescription ability={ability} char={char} derived={derived} live />
                         <EvolucaoTable shikataId={char.shikata} nome={ability.nome} nivelAtual={getAbilityProgressionLevel(char, ability)} />
                         <AbilityRuntimePanel
                           ability={ability}
                           char={char}
+                          derived={derived}
                           onUse={handleOfficialAbilityUse}
                           onReset={resetOfficialAbilityUse}
                           onFeedback={setRuntimeFeedback}
+                          update={update}
                         />
                       </article>
                     ))}

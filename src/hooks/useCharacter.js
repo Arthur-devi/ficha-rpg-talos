@@ -11,8 +11,9 @@ import { DEFAULT_SHIKATA_PROGRESS, getAccumulatedShikataLevel, getLearnedShikata
 import { getStateRuntime, IMPARAVEL_EXACT_IMMUNITIES } from '../data/stateRuntime';
 import { DEATH_SAVE_TABLE_RULE } from '../data/tableRules';
 import { clearDeathSavesOnHealing, DEFAULT_DEATH_SAVE_STATE, normalizeDeathSaveState, resolveDeathSaveRoll, reviveDeathSaveState } from '../data/deathSaveRuntime';
+import { DEFAULT_REI_FALSO_STATE, getInvisibleIntelligenceModifier, getLadinoCriticalBonusPercent, getReiFalsoModifierPool, isReiFalsoActive, normalizeReiFalsoState, reiFalsoBonusesForDay } from '../data/ladinoRuntime';
 
-const CURRENT_RULES_VERSION = 15;
+const CURRENT_RULES_VERSION = 16;
 const DICE_HISTORY_LIMIT = 50;
 const DEFAULT_DESLOCAMENTO_BASE = 2;
 const DEFAULT_LIMITE_CANSACO_BASE = 4;
@@ -136,6 +137,9 @@ const defaultCharacter = {
   },
 
   classResources: {
+    ladino: {
+      reiFalso: { ...DEFAULT_REI_FALSO_STATE },
+    },
     bardo: {
       performance: 0,
       armasSonoras: 0,
@@ -741,6 +745,7 @@ export function useCharacter() {
   stateAttrBonuses.defesa = stateEffects.defenseBonus;
   const classAttrBonuses = Object.fromEntries(ITEM_ATTRIBUTE_KEYS.map(key => [key, 0]));
   const hemomanteLevel = getShikataLevel(char, 'hemomante');
+  const ladinoLevel = getShikataLevel(char, 'ladino');
   if (hemomanteLevel > 0) {
     const maxReservaSangue = Math.max(0, hemomanteLevel * 4);
     const reservaSangue = Math.min(maxReservaSangue, Number(char.classResources?.hemomante?.reservaSangue) || 0);
@@ -772,17 +777,25 @@ export function useCharacter() {
   const shikataData = SHIKATAS.find(shikata => shikata.id === char.shikata);
   const activeShikataLevel = getShikataLevel(char, char.shikata);
   const activeSubclass = getShikataSubclass(char, char.shikata);
+  const baseIntModifier = getMod(attrsTotal.inteligencia);
+  const invisibleIntelligenceActive = ladinoLevel >= 5;
+  const effectiveIntModifier = getInvisibleIntelligenceModifier(baseIntModifier, ladinoLevel);
   const modifierValues = {
     forca: getMod(attrsTotal.forca),
     magia: getMod(magiaTotal),
     constituicao: getMod(attrsTotal.constituicao),
-    inteligencia: getMod(attrsTotal.inteligencia),
+    inteligencia: effectiveIntModifier,
     percepcao: getMod(attrsTotal.percepcao),
     destreza: getMod(attrsTotal.destreza),
     carisma: getMod(attrsTotal.carisma),
     defesa: getMod(attrsTotal.defesa),
     sorte: getMod(attrsTotal.sorte),
   };
+  const ladinoCriticalBonusPercent = getLadinoCriticalBonusPercent(attrsTotal.destreza);
+  const reiFalsoModifierPool = getReiFalsoModifierPool(modifierValues);
+  const reiFalsoState = normalizeReiFalsoState(char.classResources?.ladino?.reiFalso);
+  const reiFalsoActive = ladinoLevel >= 20 && isReiFalsoActive(reiFalsoState, char.abilityTimeline?.day);
+  const reiFalsoSkillBonuses = reiFalsoActive ? reiFalsoBonusesForDay(reiFalsoState, char.abilityTimeline?.day) : {};
   const attackModifierOptions = buildMulticlassAttackModifierOptions(char, modifierValues);
   const turnEconomy = getTurnEconomySnapshot(char);
 
@@ -813,12 +826,19 @@ export function useCharacter() {
     modForca: getMod(attrsTotal.forca),
     modMagia: getMod(magiaTotal),   // modificador usa magia total (com bônus INT)
     modCon: getMod(attrsTotal.constituicao),
-    modInt: getMod(attrsTotal.inteligencia),
+    modInt: effectiveIntModifier,
     modPer: getMod(attrsTotal.percepcao),
     modDes: getMod(attrsTotal.destreza),
     modCar: getMod(attrsTotal.carisma),
     modDef: getMod(attrsTotal.defesa),
     modSor: getMod(attrsTotal.sorte),
+    baseModInt: baseIntModifier,
+    invisibleIntelligenceActive,
+    ladinoCriticalBonusPercent,
+    reiFalsoModifierPool,
+    reiFalsoState,
+    reiFalsoActive,
+    reiFalsoSkillBonuses,
     attrsTotal,
     originEffects,
     activeShikataLevel,
@@ -918,6 +938,24 @@ export function useCharacter() {
     const progressionLevel = getAbilityProgressionLevel(current, ability);
     const spec = getAbilityRuntimeSpec(current.shikata, ability, progressionLevel, activeSubclass);
     if (!spec.trackable) return { ok: false, message: 'Habilidades passivas não consomem uso.' };
+
+    const isReiFalso = current.shikata === 'ladino' && String(ability.nome || '').trim().toUpperCase() === 'REI FALSO';
+    let reiFalsoAllocations = null;
+    if (isReiFalso) {
+      const currentReiState = normalizeReiFalsoState(current.classResources?.ladino?.reiFalso);
+      if (isReiFalsoActive(currentReiState, current.abilityTimeline?.day)) {
+        return { ok: false, blockedBeforeCommit: true, message: 'REI FALSO já está ativo. Encerre o efeito atual antes de tentar ativá-lo novamente.' };
+      }
+      reiFalsoAllocations = options.reiFalsoAllocations && typeof options.reiFalsoAllocations === 'object'
+        ? Object.fromEntries(Object.entries(options.reiFalsoAllocations)
+          .map(([skill, value]) => [String(skill || '').trim(), Math.max(0, Math.trunc(Number(value) || 0))])
+          .filter(([skill, value]) => skill && value > 0))
+        : {};
+      const allocated = Object.values(reiFalsoAllocations).reduce((sum, value) => sum + value, 0);
+      if (allocated !== reiFalsoModifierPool) {
+        return { ok: false, blockedBeforeCommit: true, message: `Distribua exatamente ${reiFalsoModifierPool} ponto(s) entre as perícias antes de ativar REI FALSO. Distribuído agora: ${allocated}.` };
+      }
+    }
 
     const actionOptions = spec.actionSpec?.options || [{ type: 'full', cost: 1, label: 'Ação completa' }];
     const selectedAction = actionOptions.find(option => option.type === options.actionMode)
@@ -1024,6 +1062,20 @@ export function useCharacter() {
       officialAbilityUsage: nextOfficialUsage,
       classResources: {
         ...current.classResources,
+        ladino: {
+          ...defaultCharacter.classResources.ladino,
+          ...(current.classResources?.ladino || {}),
+          reiFalso: isReiFalso
+            ? {
+              active: true,
+              bonuses: reiFalsoAllocations,
+              totalPool: reiFalsoModifierPool,
+              activatedDay: Math.max(1, Number(current.abilityTimeline?.day) || 1),
+              expiresDay: Math.max(1, Number(current.abilityTimeline?.day) || 1) + 1,
+              activatedAt: now,
+            }
+            : normalizeReiFalsoState(current.classResources?.ladino?.reiFalso),
+        },
         bardo: {
           ...defaultCharacter.classResources.bardo,
           ...(current.classResources?.bardo || {}),
@@ -1056,9 +1108,9 @@ export function useCharacter() {
       actionAfter,
       actionEffect: combatActive ? actionEffectResult.effect : null,
       actionConsumed: combatActive,
-      message: `${ability.nome} utilizada.`,
+      message: isReiFalso ? `REI FALSO ativado com ${reiFalsoModifierPool} ponto(s) distribuídos até o próximo dia.` : `${ability.nome} utilizada.`,
     };
-  }, [commitCharacter, limiteCansacoTotal]);
+  }, [commitCharacter, limiteCansacoTotal, reiFalsoModifierPool]);
 
   const resetOfficialAbilityUse = useCallback((abilityKey, options = {}) => {
     setChar(prev => {
@@ -1156,6 +1208,16 @@ export function useCharacter() {
       }));
 
       const nextClassResources = { ...prev.classResources };
+      if (period === 'day') {
+        const reiFalso = normalizeReiFalsoState(prev.classResources?.ladino?.reiFalso);
+        if (reiFalso.active && reiFalso.expiresDay != null && timeline.day >= reiFalso.expiresDay) {
+          nextClassResources.ladino = {
+            ...defaultCharacter.classResources.ladino,
+            ...(prev.classResources?.ladino || {}),
+            reiFalso: { ...reiFalso, active: false, bonuses: {} },
+          };
+        }
+      }
       if (period === 'turn') {
         nextClassResources.hemomante = {
           ...defaultCharacter.classResources.hemomante,
@@ -1737,6 +1799,11 @@ function normalizeCharacter(data = {}) {
     classResources: {
       ...defaultCharacter.classResources,
       ...(data.classResources || {}),
+      ladino: {
+        ...defaultCharacter.classResources.ladino,
+        ...(data.classResources?.ladino || {}),
+        reiFalso: normalizeReiFalsoState(data.classResources?.ladino?.reiFalso),
+      },
       bardo: {
         ...defaultCharacter.classResources.bardo,
         ...(data.classResources?.bardo || {}),
@@ -1853,6 +1920,16 @@ function normalizeCharacter(data = {}) {
       merged.initialAttributeSetup = (hasLegacyAttributes || hasLegacyProgress)
         ? { completed: true, method: 'legacy', values: [], rolls: [], completedAt: null }
         : { ...defaultCharacter.initialAttributeSetup };
+    }
+    if ((data.talosRulesVersion || 0) < 16) {
+      merged.classResources = {
+        ...merged.classResources,
+        ladino: {
+          ...defaultCharacter.classResources.ladino,
+          ...(merged.classResources?.ladino || {}),
+          reiFalso: normalizeReiFalsoState(merged.classResources?.ladino?.reiFalso),
+        },
+      };
     }
     merged.talosRulesVersion = CURRENT_RULES_VERSION;
   }

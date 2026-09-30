@@ -45,6 +45,7 @@ function AttrBox({
   onSpendPoint,
   onRefundPoint,
   editingDisabled = false,
+  modifierNote = '',
 }) {
   const isMagia = attr.key === 'magia';
   const bonusLines = [
@@ -82,6 +83,7 @@ function AttrBox({
         {bonusLines.length > 0
           ? bonusLines.map(line => <span className={toneClass(line.value)} key={line.text}>{line.text}</span>)
           : <span className="muted">Sem bônus extras</span>}
+        {modifierNote && <span className="attr-modifier-note">{modifierNote}</span>}
       </div>
 
       <div className="attr-level-controls">
@@ -331,6 +333,9 @@ export default function TabAtributos({ char, update, updateAttr, derived, toggle
                   onSpendPoint={() => spendAttributePoint?.(attr.key)}
                   onRefundPoint={() => refundAttributePoint?.(attr.key)}
                   editingDisabled={!initialAttributesComplete}
+                  modifierNote={attr.key === 'inteligencia' && derived.invisibleIntelligenceActive
+                    ? `INTELIGÊNCIA DO INVISÍVEL ×2 · base ${signed(derived.baseModInt)} → ${signed(derived.modInt)}`
+                    : ''}
                 />
               );
             })}

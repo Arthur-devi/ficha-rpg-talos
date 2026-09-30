@@ -6840,3 +6840,86 @@ body,
   .initial-attribute-grid { grid-template-columns: 1fr; }
   .initial-attribute-row { grid-template-columns: minmax(0, 1fr) 110px; }
 }
+
+/* Ladino — passivos dinâmicos e REI FALSO */
+.attr-source-lines .attr-modifier-note {
+  margin-top: 2px;
+  color: #5a3d85 !important;
+  font-weight: 800;
+  letter-spacing: .02em;
+}
+
+.ability-live-rule {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px 10px;
+  margin: 7px 0 2px;
+  padding: 7px 9px;
+  border: 1px solid rgba(89, 61, 133, .2);
+  border-radius: var(--radius-md);
+  background: rgba(89, 61, 133, .055);
+  font-family: var(--font-heading);
+  font-size: .68rem;
+}
+.ability-live-rule strong { color: #513979; }
+.ability-live-rule span { color: var(--ink-faded); }
+.rei-falso-breakdown {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 8px 0;
+}
+.rei-falso-breakdown small { flex: 1 0 100%; color: var(--ink-faded); }
+.rei-falso-breakdown span {
+  padding: 3px 6px;
+  border: 1px solid var(--parch-300);
+  border-radius: 999px;
+  background: rgba(255,255,255,.35);
+  font-family: var(--font-heading);
+  font-size: .61rem;
+}
+.rei-falso-allocation {
+  margin-top: 9px;
+  padding-top: 9px;
+  border-top: 1px solid rgba(126,91,27,.16);
+}
+.rei-falso-allocation-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 7px;
+}
+.rei-falso-allocation-head > div { display: grid; gap: 2px; }
+.rei-falso-allocation-head strong { font-family: var(--font-heading); font-size: .72rem; }
+.rei-falso-allocation-head small { color: var(--ink-faded); font-size: .65rem; }
+.rei-falso-allocation-row {
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) 92px auto;
+  gap: 6px;
+  margin-top: 6px;
+}
+.rei-falso-allocation-row select,
+.rei-falso-allocation-row input { min-width: 0; }
+.rei-falso-active-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+  gap: 6px;
+}
+.rei-falso-active-grid span {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 9px;
+  border: 1px solid rgba(21,128,61,.2);
+  border-radius: var(--radius-md);
+  background: rgba(34,197,94,.055);
+  font-size: .7rem;
+}
+.rei-falso-active-grid b { color: #166534; font-family: var(--font-heading); }
+@media (max-width: 680px) {
+  .rei-falso-allocation-head { align-items: flex-start; flex-direction: column; }
+  .rei-falso-allocation-row { grid-template-columns: minmax(0, 1fr) 78px auto; }
+}

@@ -61,7 +61,9 @@ export function skillAttributeKey(skillName) {
 export function skillModifier(derived, skillName) {
   const attributeKey = skillAttributeKey(skillName);
   const modifierKey = MODIFIER_KEY_BY_ATTRIBUTE[attributeKey];
-  return modifierKey ? Number(derived?.[modifierKey]) || 0 : 0;
+  const attributeModifier = modifierKey ? Number(derived?.[modifierKey]) || 0 : 0;
+  const reiFalsoBonus = Number(derived?.reiFalsoSkillBonuses?.[skillName]) || 0;
+  return attributeModifier + reiFalsoBonus;
 }
 
 export function characterProficiencySources(char, derived, skillName) {
