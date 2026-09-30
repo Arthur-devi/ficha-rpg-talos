@@ -32,7 +32,7 @@ function compactAbilityName(text = '') {
   return name?.trim() || 'Habilidade única';
 }
 
-export default function TabIdentidade({ char, update, onLevelUp, learnShikata, setActiveShikata, setShikataLevel, chooseSubclass, derived, useOriginAbility, attemptGuardianRevestimento, rollThunganItem, setWerewolfForm, clearMetamorphForm, applyVampireLifesteal }) {
+export default function TabIdentidade({ char, update, onLevelUp, onNavigateAttributes, learnShikata, setActiveShikata, setShikataLevel, chooseSubclass, derived, useOriginAbility, attemptGuardianRevestimento, rollThunganItem, setWerewolfForm, clearMetamorphForm, applyVampireLifesteal }) {
   const [levelUpMessage, setLevelUpMessage] = useState('');
   const [manualLevelDialogOpen, setManualLevelDialogOpen] = useState(false);
   const [manualLevelValue, setManualLevelValue] = useState(1);
@@ -56,7 +56,8 @@ export default function TabIdentidade({ char, update, onLevelUp, learnShikata, s
   const fatigueCurrent = Math.max(0, Number(derived.cansacoAtual) || 0);
   const pendingLevelUp = char.pendingLevelUp && typeof char.pendingLevelUp === 'object' ? char.pendingLevelUp : null;
   const pendingAttributePoints = Math.max(0, Number(char.pontosDistributivos) || 0);
-  const levelProgressionBlocked = Boolean(pendingLevelUp) || pendingAttributePoints > 0;
+  const initialAttributesComplete = Boolean(char.initialAttributeSetup?.completed);
+  const levelProgressionBlocked = Boolean(pendingLevelUp) || pendingAttributePoints > 0 || !initialAttributesComplete;
 
   const handleOrigemChange = (value) => {
     update('origem', value);
@@ -94,12 +95,12 @@ export default function TabIdentidade({ char, update, onLevelUp, learnShikata, s
     const result = onLevelUp?.();
     if (!result) return;
     setLevelUpMessage(result.ok
-      ? `${shikataData?.name || 'Shikata'} Nv. ${result.nextLevel}: evolução iniciada. Role o dado de vida na página Dados para liberar ${result.pontosConcedidos} pontos de atributo.`
+      ? `${shikataData?.name || 'Shikata'} Nv. ${result.nextLevel}: evolução iniciada. Defina a vida na página Dados para liberar ${result.pontosConcedidos} pontos de atributo.`
       : result.message);
   };
 
   const openManualLevelDialog = () => {
-    if (!char.shikata || pendingLevelUp) return;
+    if (!char.shikata || pendingLevelUp || !initialAttributesComplete) return;
     setManualLevelValue(activeShikataLevel);
     setManualLevelDialogOpen(true);
   };
@@ -254,10 +255,12 @@ export default function TabIdentidade({ char, update, onLevelUp, learnShikata, s
             <button className="character-level-up" type="button" disabled={!char.shikata || levelProgressionBlocked} onClick={handleLevelUp}>
               <TalosIcon name="upgrade" size={15} />
               {pendingLevelUp
-                ? 'Role a vida para continuar'
+                ? 'Defina a vida para continuar'
                 : pendingAttributePoints > 0
                   ? `Distribua ${pendingAttributePoints} ponto(s)`
-                  : `Evoluir ${shikataData?.name || 'Shikata'}`}
+                  : !initialAttributesComplete
+                    ? 'Defina atributos iniciais'
+                    : `Evoluir ${shikataData?.name || 'Shikata'}`}
             </button>
           </div>
         </div>
@@ -265,12 +268,18 @@ export default function TabIdentidade({ char, update, onLevelUp, learnShikata, s
         {levelUpMessage && !pendingLevelUp && <div className={`character-level-message ${levelUpMessage.includes('Selecione') || levelUpMessage.includes('Finalize') ? 'error' : ''}`}>{levelUpMessage}</div>}
         {pendingLevelUp && (
           <div className="character-level-message error">
-            Evolução em andamento: role o dado de vida do nível {pendingLevelUp.toLevel} na página Dados. Os pontos de atributo ainda estão bloqueados.
+            Evolução em andamento: defina a vida do nível {pendingLevelUp.toLevel} na página Dados. Os pontos de atributo ainda estão bloqueados.
           </div>
         )}
         {!pendingLevelUp && pendingAttributePoints > 0 && (
           <div className="character-level-message">
             Distribua os {pendingAttributePoints} ponto(s) de atributo restante(s) antes de evoluir novamente.
+          </div>
+        )}
+        {!pendingLevelUp && pendingAttributePoints <= 0 && !initialAttributesComplete && (
+          <div className="character-level-message">
+            A distribuição inicial de atributos ainda não foi concluída. Escolha a distribuição fixa ou role os 8 resultados antes da primeira evolução.
+            <button type="button" className="btn btn-secondary btn-sm" onClick={onNavigateAttributes}>Ir para Atributos</button>
           </div>
         )}
       </section>
@@ -413,8 +422,8 @@ export default function TabIdentidade({ char, update, onLevelUp, learnShikata, s
                 <InfoTip align="start" title="Ajuste de nível" label="Regra do nível da Shikata">Ajuste manual não concede pontos distributivos e não cria rolagem de HP. Use Evoluir Shikata para a progressão normal.</InfoTip>
               </div>
               <div className="manual-level-edit-control">
-                <input type="number" min="1" max="30" value={char.shikata ? activeShikataLevel : 1} disabled={!char.shikata || Boolean(pendingLevelUp)} readOnly aria-label="Nível atual da Shikata ativa" onClick={openManualLevelDialog} />
-                <button type="button" className="btn btn-secondary btn-sm" disabled={!char.shikata || Boolean(pendingLevelUp)} onClick={openManualLevelDialog}>Editar manualmente</button>
+                <input type="number" min="1" max="30" value={char.shikata ? activeShikataLevel : 1} disabled={!char.shikata || Boolean(pendingLevelUp) || !initialAttributesComplete} readOnly aria-label="Nível atual da Shikata ativa" onClick={openManualLevelDialog} />
+                <button type="button" className="btn btn-secondary btn-sm" disabled={!char.shikata || Boolean(pendingLevelUp) || !initialAttributesComplete} onClick={openManualLevelDialog}>Editar manualmente</button>
               </div>
             </div>
             {shikataData && (

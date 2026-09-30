@@ -4,6 +4,7 @@ import { CONDITION_MARKERS, OFFICIAL_STATE_DEFS } from '../data/stateRuntime';
 import { INSPIRATION_TABLE_RULE } from '../data/tableRules';
 import InfoTip from './InfoTip';
 import TalosIcon from './TalosIcon';
+import InitialAttributeSetup from './InitialAttributeSetup';
 
 const SKILL_COLUMNS = [
   ['forca', 'inteligencia', 'carisma', 'sorte'],
@@ -43,6 +44,7 @@ function AttrBox({
   canSpendPoint = false,
   onSpendPoint,
   onRefundPoint,
+  editingDisabled = false,
 }) {
   const isMagia = attr.key === 'magia';
   const bonusLines = [
@@ -68,6 +70,7 @@ function AttrBox({
             onChange(Math.max(minValue, v));
           }}
           aria-label={`${attr.label}: valor do atributo`}
+          disabled={editingDisabled}
         />
         <div className="attr-medallion-rule" aria-hidden="true" />
         <div className={`attr-mod ${toneClass(mod)}`}>{mod >= 0 ? '+' : ''}{mod}</div>
@@ -107,7 +110,7 @@ function AttrBox({
   );
 }
 
-export default function TabAtributos({ char, update, updateAttr, derived, toggleEstado, consumeConcentration, togglePericia, spendAttributePoint, refundAttributePoint, setCansaco }) {
+export default function TabAtributos({ char, update, updateAttr, derived, toggleEstado, consumeConcentration, togglePericia, spendAttributePoint, refundAttributePoint, setCansaco, finalizeInitialAttributes }) {
   const [stateMessage, setStateMessage] = useState('');
   const [currencyMessage, setCurrencyMessage] = useState('');
   const hpMaxTotal = derived.hpMaxTotal || char.hpMax;
@@ -150,8 +153,11 @@ export default function TabAtributos({ char, update, updateAttr, derived, toggle
     setCurrencyMessage(`1 ${currencyLabels[key]} → 100 ${currencyLabels[targetKey]}.`);
   };
 
+  const initialAttributesComplete = Boolean(char.initialAttributeSetup?.completed);
+
   return (
     <div className="stack attributes-page-v115">
+      <InitialAttributeSetup char={char} finalizeInitialAttributes={finalizeInitialAttributes} />
       {/* Vitais */}
       <div className="card vitals-sheet-card">
         <div className="card-header">
@@ -324,6 +330,7 @@ export default function TabAtributos({ char, update, updateAttr, derived, toggle
                   canSpendPoint={(char.pontosDistributivos || 0) > 0 && !(char.origem === 'tita' && attr.key === 'carisma')}
                   onSpendPoint={() => spendAttributePoint?.(attr.key)}
                   onRefundPoint={() => refundAttributePoint?.(attr.key)}
+                  editingDisabled={!initialAttributesComplete}
                 />
               );
             })}

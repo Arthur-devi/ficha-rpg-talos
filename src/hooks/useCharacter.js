@@ -12,7 +12,7 @@ import { getStateRuntime, IMPARAVEL_EXACT_IMMUNITIES } from '../data/stateRuntim
 import { DEATH_SAVE_TABLE_RULE } from '../data/tableRules';
 import { clearDeathSavesOnHealing, DEFAULT_DEATH_SAVE_STATE, normalizeDeathSaveState, resolveDeathSaveRoll, reviveDeathSaveState } from '../data/deathSaveRuntime';
 
-const CURRENT_RULES_VERSION = 14;
+const CURRENT_RULES_VERSION = 15;
 const DICE_HISTORY_LIMIT = 50;
 const DEFAULT_DESLOCAMENTO_BASE = 2;
 const DEFAULT_LIMITE_CANSACO_BASE = 4;
@@ -55,6 +55,13 @@ const defaultCharacter = {
     carisma: 0,
     defesa: 0,
     sorte: 0,
+  },
+  initialAttributeSetup: {
+    completed: false,
+    method: '',
+    values: [],
+    rolls: [],
+    completedAt: null,
   },
 
   // HP
@@ -233,10 +240,17 @@ export function useCharacter() {
     const current = charRef.current;
     if (!current.shikata) return { ok: false, message: 'Selecione uma Shikata antes de subir de nível.' };
 
+    if (!current.initialAttributeSetup?.completed) {
+      return {
+        ok: false,
+        message: 'Defina e confirme os atributos iniciais na página Atributos antes da primeira evolução.',
+      };
+    }
+
     if (current.pendingLevelUp) {
       return {
         ok: false,
-        message: 'Finalize a evolução atual: role primeiro o dado de vida na página Dados.',
+        message: 'Finalize a evolução atual: registre primeiro a vida do nível na página Dados.',
       };
     }
 
@@ -307,9 +321,9 @@ export function useCharacter() {
   const completePendingLevelUpHpRoll = useCallback((rollEntry) => {
     const current = charRef.current;
     const pending = current.pendingLevelUp;
-    if (!pending) return { ok: false, message: 'Não há evolução aguardando rolagem de vida.' };
+    if (!pending) return { ok: false, message: 'Não há evolução aguardando definição de vida.' };
     if (!rollEntry || rollEntry.shikataId !== pending.shikataId || Number(rollEntry.level) !== Number(pending.toLevel)) {
-      return { ok: false, message: 'Esta rolagem não corresponde à evolução pendente.' };
+      return { ok: false, message: 'Este registro de vida não corresponde à evolução pendente.' };
     }
 
     const lockedRoll = {
@@ -348,6 +362,9 @@ export function useCharacter() {
   const learnShikata = useCallback((shikataId) => {
     const current = charRef.current;
     if (current.pendingLevelUp) return { ok: false, message: 'Finalize a evolução pendente antes de aprender outra Shikata.' };
+    if (getLearnedShikataIds(current).length > 0 && !current.initialAttributeSetup?.completed) {
+      return { ok: false, message: 'Defina os atributos iniciais antes de aprender uma segunda Shikata.' };
+    }
     const data = SHIKATAS.find(shikata => shikata.id === shikataId);
     if (!data) return { ok: false, message: 'Shikata inválida.' };
     const progress = normalizeShikataProgress(current.shikataProgress, current);
@@ -373,7 +390,7 @@ export function useCharacter() {
   const setActiveShikata = useCallback((shikataId) => {
     const current = charRef.current;
     if (current.pendingLevelUp && current.pendingLevelUp.shikataId !== shikataId) {
-      return { ok: false, message: 'Role o dado de vida da evolução pendente antes de trocar a Shikata ativa.' };
+      return { ok: false, message: 'Registre a vida da evolução pendente antes de trocar a Shikata ativa.' };
     }
     const entry = getShikataEntry(current, shikataId);
     if (!entry) return { ok: false, message: 'Aprenda esta Shikata antes de ativá-la.' };
@@ -386,6 +403,9 @@ export function useCharacter() {
     const current = charRef.current;
     if (current.pendingLevelUp) {
       return { ok: false, message: 'Finalize a evolução pendente antes de fazer um ajuste manual de nível.' };
+    }
+    if (!current.initialAttributeSetup?.completed && Number(value) > 1) {
+      return { ok: false, message: 'Defina os atributos iniciais antes de elevar manualmente a Shikata acima do nível 1.' };
     }
     const progress = normalizeShikataProgress(current.shikataProgress, current);
     const entry = progress.entries[shikataId];
@@ -424,6 +444,62 @@ export function useCharacter() {
     const current = charRef.current;
     commitCharacter({ ...current, pendingSubclassChoice: null });
   }, [commitCharacter]);
+
+  const finalizeInitialAttributes = useCallback((payload) => {
+    const current = charRef.current;
+    if (current.initialAttributeSetup?.completed) return { ok: false, message: 'Os atributos iniciais já foram confirmados.' };
+    if (current.pendingLevelUp || (current.levelUpHistory || []).length > 0 || getAccumulatedShikataLevel(current) > 1) {
+      return { ok: false, message: 'A distribuição inicial só pode ser concluída antes da primeira evolução.' };
+    }
+
+    const method = payload?.method;
+    if (!['fixed', 'dice'].includes(method)) return { ok: false, message: 'Escolha um método válido de distribuição inicial.' };
+
+    const attrs = payload?.attrs && typeof payload.attrs === 'object' ? payload.attrs : {};
+    const normalizedAttrs = { ...defaultCharacter.attrs };
+    for (const key of ITEM_ATTRIBUTE_KEYS) normalizedAttrs[key] = Number(attrs[key]) || 0;
+
+    const assignedValues = Object.values(normalizedAttrs).filter(value => value !== 0).sort((a, b) => a - b);
+    const suppliedValues = Array.isArray(payload?.values) ? payload.values.map(value => Number(value) || 0).sort((a, b) => a - b) : [];
+    if (suppliedValues.length !== 8 || assignedValues.length !== 8 || suppliedValues.some((value, index) => value !== assignedValues[index])) {
+      return { ok: false, message: 'Distribua exatamente os 8 valores disponíveis; um atributo deve permanecer em 0.' };
+    }
+
+    if (method === 'fixed') {
+      const expected = [2, 2, 3, 4, 4, 4, 5, 6];
+      if (suppliedValues.some((value, index) => value !== expected[index])) {
+        return { ok: false, message: 'A distribuição fixa deve usar 6, 5, 4, 4, 4, 3, 2 e 2.' };
+      }
+    } else if (suppliedValues.some(value => value < 2 || value > 8)) {
+      return { ok: false, message: 'Os resultados de 3d4 (somando os 2 menores) devem ficar entre 2 e 8.' };
+    }
+
+    const nextBase = {
+      ...current,
+      attrs: normalizedAttrs,
+      initialAttributeSetup: {
+        completed: true,
+        method,
+        values: Array.isArray(payload.values) ? payload.values.map(value => Number(value) || 0) : [],
+        rolls: Array.isArray(payload.rolls) ? payload.rolls : [],
+        completedAt: new Date().toISOString(),
+      },
+    };
+    const nextHpMax = Math.max(1, calculateRuleHpBase(nextBase) + (Number(nextBase.hpManualBonus) || 0));
+    const next = { ...nextBase, hpAtual: nextHpMax };
+    commitCharacter(next);
+    return { ok: true, method, hpAtual: nextHpMax };
+  }, [commitCharacter]);
+
+  const resetCharacter = useCallback(() => {
+    const fresh = normalizeCharacter({ talosRulesVersion: CURRENT_RULES_VERSION });
+    charRef.current = fresh;
+    setChar(fresh);
+    try { localStorage.removeItem('talos_char_draft'); } catch {
+      // The in-memory reset still succeeds when persistence is blocked.
+    }
+    return { ok: true };
+  }, []);
 
   const spendAttributePoint = useCallback((attr) => {
     if (!ITEM_ATTRIBUTE_KEYS.includes(attr)) return;
@@ -1514,6 +1590,8 @@ export function useCharacter() {
     setShikataLevel,
     chooseSubclass,
     dismissSubclassEvent,
+    finalizeInitialAttributes,
+    resetCharacter,
     spendAttributePoint,
     refundAttributePoint,
     setCansaco,
@@ -1619,6 +1697,12 @@ function normalizeCharacter(data = {}) {
     ...defaultCharacter,
     ...data,
     attrs: { ...defaultCharacter.attrs, ...(data.attrs || {}) },
+    initialAttributeSetup: {
+      ...defaultCharacter.initialAttributeSetup,
+      ...(data.initialAttributeSetup || {}),
+      values: Array.isArray(data.initialAttributeSetup?.values) ? data.initialAttributeSetup.values : [],
+      rolls: Array.isArray(data.initialAttributeSetup?.rolls) ? data.initialAttributeSetup.rolls : [],
+    },
     moedas: { ...defaultCharacter.moedas, ...(data.moedas || {}) },
     professionState: {
       ...defaultCharacter.professionState,
@@ -1760,6 +1844,15 @@ function normalizeCharacter(data = {}) {
     }
     if ((data.talosRulesVersion || 0) < 14) {
       merged.pendingLevelUp = null;
+    }
+    if ((data.talosRulesVersion || 0) < 15) {
+      const hasLegacyAttributes = Object.values(merged.attrs || {}).some(value => Number(value) !== 0);
+      const hasLegacyProgress = getAccumulatedShikataLevel(merged) > 1
+        || (merged.levelUpHistory || []).length > 0
+        || (merged.hpLevelRolls || []).length > 0;
+      merged.initialAttributeSetup = (hasLegacyAttributes || hasLegacyProgress)
+        ? { completed: true, method: 'legacy', values: [], rolls: [], completedAt: null }
+        : { ...defaultCharacter.initialAttributeSetup };
     }
     merged.talosRulesVersion = CURRENT_RULES_VERSION;
   }

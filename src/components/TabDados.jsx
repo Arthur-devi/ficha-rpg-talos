@@ -70,18 +70,6 @@ function rollFormula(rawFormula) {
   };
 }
 
-function rollTalosAttribute() {
-  const rolls = Array.from({ length: 3 }, () => rollDie(4));
-  const kept = [...rolls].sort((a, b) => a - b).slice(0, 2);
-  const total = kept.reduce((sum, roll) => sum + roll, 0);
-  return {
-    label: 'Atributo TALOS',
-    formula: '3d4, soma dos 2 menores',
-    total,
-    parts: [{ type: 'attribute', rolls, kept, subtotal: total }],
-  };
-}
-
 function formatPart(part, index) {
   if (part.type === 'attribute') {
     return `3d4 [${part.rolls.join(', ')}] | usados: ${part.kept.join(' + ')} = ${part.subtotal}`;
@@ -104,19 +92,26 @@ function makeEntry(result, extra = {}) {
   };
 }
 
-function resolveHitDiceFormula(shikataData, derived) {
-  if (!shikataData || !shikataData.dadoVida || shikataData.dadoVida.toLowerCase().includes('não informado')) {
-    return null;
-  }
-
-  const rawFormula = shikataData.dadoVida.split(/\s+ou\s+/i)[0].trim();
+function resolveHpFormula(rawFormula, derived) {
+  if (!rawFormula) return null;
   const resolvedFormula = normalizeResolvedFormula(rawFormula
     .replace(/mod\s*cons?/gi, formatSignedNumber(derived.modCon || 0))
     .replace(/mod\s*con/gi, formatSignedNumber(derived.modCon || 0))
     .replace(/\bconstituição\b/gi, formatSignedNumber(derived.attrsTotal?.constituicao || 0))
     .replace(/\bcon\b/gi, formatSignedNumber(derived.attrsTotal?.constituicao || 0)));
-
   return { rawFormula, resolvedFormula };
+}
+
+function resolveHpProgressionOptions(shikataData, derived) {
+  if (!shikataData || !shikataData.dadoVida || shikataData.dadoVida.toLowerCase().includes('não informado')) {
+    return null;
+  }
+
+  const [rollRaw, fixedRaw] = shikataData.dadoVida.split(/\s+ou\s+/i).map(value => value.trim()).filter(Boolean);
+  const roll = resolveHpFormula(rollRaw, derived);
+  const fixed = resolveHpFormula(fixedRaw, derived);
+  if (fixed) fixed.total = rollFormula(fixed.resolvedFormula).total;
+  return { roll, fixed };
 }
 
 function DeathTrack({ label, value, kind }) {
@@ -155,7 +150,10 @@ export default function TabDados({ char, update, derived, completePendingLevelUp
   const remainingHpRolls = pendingLevelUp
     ? (pendingHpRollExists ? 0 : 1)
     : Math.max(0, maxHpRolls - activeHpRolls.length);
-  const hitDiceFormula = useMemo(() => resolveHitDiceFormula(hpShikataData, derived), [hpShikataData, derived]);
+  const hpTargetLevel = Number(pendingLevelUp?.toLevel) || activeHpRolls.length + 2;
+  const hpProgressionOptions = useMemo(() => resolveHpProgressionOptions(hpShikataData, derived), [hpShikataData, derived]);
+  const hitDiceFormula = hpProgressionOptions?.roll || null;
+  const fixedHpFormula = hpProgressionOptions?.fixed || null;
   const diceHistory = Array.isArray(char.diceHistory) ? char.diceHistory : [];
   const attackModifierOptions = derived.attackModifierOptions || [];
   const selectedAttackModifier = attackModifierOptions.find(option => option.key === attackModifierKey) || attackModifierOptions[0] || null;
@@ -261,9 +259,6 @@ export default function TabDados({ char, update, derived, completePendingLevelUp
     }
   };
 
-  const handleTalosAttribute = () => {
-    commitFreeRoll(rollTalosAttribute());
-  };
 
   const handleDeathSave = () => {
     const outcome = rollDeathSave?.();
@@ -322,7 +317,7 @@ export default function TabDados({ char, update, derived, completePendingLevelUp
   };
 
   const buildHpRollEntry = (level) => {
-    if (!hitDiceFormula) throw new Error('A shikata atual não possui dado de vida pós nível 1 configurado.');
+    if (!hitDiceFormula) throw new Error('A Shikata atual não possui dado de vida pós nível 1 configurado.');
 
     const rolled = rollFormula(hitDiceFormula.resolvedFormula);
     return makeEntry({
@@ -333,6 +328,7 @@ export default function TabDados({ char, update, derived, completePendingLevelUp
       parts: rolled.parts,
     }, {
       type: 'hp-level-roll',
+      hpChoice: 'rolled',
       shikataId: hpShikataData.id,
       shikataName: hpShikataData.name,
       level,
@@ -340,7 +336,26 @@ export default function TabDados({ char, update, derived, completePendingLevelUp
     });
   };
 
-  const commitHpRolls = (entries) => {
+  const buildHpFixedEntry = (level) => {
+    if (!fixedHpFormula) throw new Error('A Shikata atual não possui valor fixo de vida configurado.');
+    const resolved = rollFormula(fixedHpFormula.resolvedFormula);
+    return makeEntry({
+      label: `Vida fixa nível ${level} - ${hpShikataData.name}`,
+      formula: fixedHpFormula.rawFormula,
+      resolvedFormula: fixedHpFormula.resolvedFormula,
+      total: resolved.total,
+      parts: resolved.parts,
+    }, {
+      type: 'hp-level-fixed',
+      hpChoice: 'fixed',
+      shikataId: hpShikataData.id,
+      shikataName: hpShikataData.name,
+      level,
+      characterLevel: Number(char.nivel) || 1,
+    });
+  };
+
+  const commitHpEntries = (entries) => {
     if (entries.length === 0) return;
     const nextHpRolls = [...(char.hpLevelRolls || []), ...entries];
     update('hpLevelRolls', nextHpRolls);
@@ -349,51 +364,35 @@ export default function TabDados({ char, update, derived, completePendingLevelUp
     setError('');
   };
 
-  const rollNextHp = () => {
-    try {
-      if (!hpShikataData) throw new Error('Selecione uma shikata antes de girar vida.');
-      if (remainingHpRolls <= 0) throw new Error('Todas as rolagens de vida disponíveis para o nível atual já foram feitas.');
-
-      if (pendingLevelUp) {
-        const entry = buildHpRollEntry(Number(pendingLevelUp.toLevel));
-        const outcome = completePendingLevelUpHpRoll?.(entry);
-        if (!outcome?.ok) throw new Error(outcome?.message || 'Não foi possível finalizar a evolução.');
-        setResult(outcome.roll || entry);
-        setError('');
-        return;
-      }
-
-      const nextLevel = activeHpRolls.length + 2;
-      commitHpRolls([buildHpRollEntry(nextLevel)]);
-    } catch (err) {
-      setError(err.message);
-    }
-  };
-
-  const rollAllHp = () => {
-    try {
-      if (pendingLevelUp) throw new Error('Finalize primeiro a evolução pendente com a rolagem de vida obrigatória.');
-      if (!hpShikataData) throw new Error('Selecione uma shikata antes de girar vida.');
-      if (remainingHpRolls <= 0) throw new Error('Todas as rolagens de vida disponíveis para o nível atual já foram feitas.');
-
-      const entries = Array.from({ length: remainingHpRolls }, (_, index) => buildHpRollEntry(activeHpRolls.length + index + 2));
-      commitHpRolls(entries);
-    } catch (err) {
-      setError(err.message);
-    }
-  };
-
-  const removeLastHpRoll = () => {
-    const activeIds = new Set(activeHpRolls.map(roll => roll.id));
-    const lastActiveRoll = activeHpRolls[activeHpRolls.length - 1];
-    const lastActiveId = lastActiveRoll?.id;
-    if (!lastActiveId) return;
-    if (lastActiveRoll?.progressionRequired) {
-      setError('A rolagem de vida usada para concluir uma evolução não pode ser removida.');
+  const commitNextHpEntry = (entry) => {
+    if (pendingLevelUp) {
+      const outcome = completePendingLevelUpHpRoll?.(entry);
+      if (!outcome?.ok) throw new Error(outcome?.message || 'Não foi possível finalizar a evolução.');
+      setResult(outcome.roll || entry);
+      setError('');
       return;
     }
+    commitHpEntries([entry]);
+  };
 
-    update('hpLevelRolls', (char.hpLevelRolls || []).filter(roll => roll.id !== lastActiveId || !activeIds.has(roll.id)));
+  const rollNextHp = () => {
+    try {
+      if (!hpShikataData) throw new Error('Selecione uma Shikata antes de definir a vida.');
+      if (remainingHpRolls <= 0) throw new Error('A vida dos níveis disponíveis já está registrada.');
+      commitNextHpEntry(buildHpRollEntry(hpTargetLevel));
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const useFixedHp = () => {
+    try {
+      if (!hpShikataData) throw new Error('Selecione uma Shikata antes de definir a vida.');
+      if (remainingHpRolls <= 0) throw new Error('A vida dos níveis disponíveis já está registrada.');
+      commitNextHpEntry(buildHpFixedEntry(hpTargetLevel));
+    } catch (err) {
+      setError(err.message);
+    }
   };
 
   return (
@@ -441,15 +440,15 @@ export default function TabDados({ char, update, derived, completePendingLevelUp
         <div className="card-body">
           {pendingLevelUp && remainingHpRolls > 0 && (
             <div style={{ marginBottom: 14, padding: '10px 12px', border: '1px solid #d97706', borderRadius: 'var(--radius-md)', background: '#fff7ed', color: '#92400e', fontSize: '0.82rem', lineHeight: 1.45 }}>
-              <strong>Evolução pendente:</strong> role agora a vida do nível <strong>{pendingLevelUp.toLevel}</strong> de <strong>{hpShikataData?.name || 'Shikata'}</strong>.
+              <strong>Evolução pendente:</strong> defina agora a vida do nível <strong>{pendingLevelUp.toLevel}</strong> de <strong>{hpShikataData?.name || 'Shikata'}</strong>, girando o dado ou usando o valor fixo.
               <div style={{ marginTop: 4 }}>
-                Os <strong>{pendingLevelUp.pontosConcedidos || 2} pontos de atributo</strong> só serão liberados depois desta rolagem.
+                Os <strong>{pendingLevelUp.pontosConcedidos || 2} pontos de atributo</strong> só serão liberados depois de registrar essa vida.
               </div>
             </div>
           )}
           {!pendingLevelUp && remainingHpRolls > 0 && (
             <div style={{ marginBottom: 14, padding: '10px 12px', border: '1px solid #d97706', borderRadius: 'var(--radius-md)', background: '#fff7ed', color: '#92400e', fontSize: '0.82rem', lineHeight: 1.45 }}>
-              <strong>Rolagem de vida disponível:</strong> há {remainingHpRolls} rolagem(ns) ainda não registrada(s) para o nível atual.
+              <strong>Vida por nível disponível:</strong> há {remainingHpRolls} nível(is) ainda sem vida registrada.
             </div>
           )}
           {!pendingLevelUp && (Number(char.pontosDistributivos) || 0) > 0 && (
@@ -464,7 +463,7 @@ export default function TabDados({ char, update, derived, completePendingLevelUp
               <div style={{ marginTop: 4, fontSize: '0.78rem', color: 'var(--ink-faded)' }}>{hpShikataData?.dadoVida || 'Selecione em Identidade'}</div>
             </div>
             <div style={{ border: '1px solid var(--parch-300)', borderRadius: 'var(--radius-md)', padding: 12, background: 'rgba(253,246,227,0.45)' }}>
-              <div style={{ fontFamily: 'var(--font-heading)', fontSize: '0.68rem', color: 'var(--ink-light)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Rolagens</div>
+              <div style={{ fontFamily: 'var(--font-heading)', fontSize: '0.68rem', color: 'var(--ink-light)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Níveis registrados</div>
               <div className="big-num" style={{ fontSize: '2rem', marginTop: 2 }}>{activeHpRolls.length}/{maxHpRolls}</div>
               <div style={{ fontSize: '0.78rem', color: 'var(--ink-faded)' }}>Bônus na vida máxima: +{derived.hpLevelRollBonus || 0}</div>
             </div>
@@ -477,12 +476,14 @@ export default function TabDados({ char, update, derived, completePendingLevelUp
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <div className="hp-progression-actions">
             <button className="btn btn-primary" onClick={rollNextHp} disabled={!hpShikataData || remainingHpRolls <= 0 || !hitDiceFormula}>
-              {remainingHpRolls > 0 ? `Girar vida do nível ${pendingLevelUp?.toLevel || activeHpRolls.length + 2}` : 'Vida em dia'}
+              <TalosIcon name="dice" size={15} />
+              {remainingHpRolls > 0 ? `Girar vida Nv. ${hpTargetLevel} · ${hitDiceFormula?.rawFormula || 'dado'}` : 'Vida em dia'}
             </button>
-            <button className="btn btn-secondary" onClick={rollAllHp} disabled={Boolean(pendingLevelUp) || !hpShikataData || remainingHpRolls <= 0 || !hitDiceFormula}>Girar restantes</button>
-            <button className="btn btn-secondary" onClick={removeLastHpRoll} disabled={activeHpRolls.length === 0 || Boolean(activeHpRolls[activeHpRolls.length - 1]?.progressionRequired)}>Remover última vida</button>
+            <button className="btn btn-secondary hp-fixed-choice" onClick={useFixedHp} disabled={!hpShikataData || remainingHpRolls <= 0 || !fixedHpFormula}>
+              Usar fixo {fixedHpFormula ? `Nv. ${hpTargetLevel} · ${fixedHpFormula.rawFormula} = ${fixedHpFormula.total}` : 'não disponível'}
+            </button>
           </div>
 
           {activeHpRolls.length > 0 && (
@@ -490,7 +491,7 @@ export default function TabDados({ char, update, derived, completePendingLevelUp
               {activeHpRolls.map(roll => (
                 <div key={roll.id} style={{ display: 'grid', gridTemplateColumns: '80px 1fr 64px', gap: 10, alignItems: 'center', padding: '8px 10px', border: '1px solid var(--parch-300)', borderRadius: 'var(--radius-sm)', background: 'rgba(253,246,227,0.35)' }}>
                   <span style={{ fontFamily: 'var(--font-heading)', color: 'var(--ink-faded)', fontSize: '0.75rem' }}>Nv. {roll.level}</span>
-                  <span style={{ color: 'var(--ink-mid)' }}>{roll.resolvedFormula || roll.formula}</span>
+                  <span style={{ color: 'var(--ink-mid)' }}>{roll.type === 'hp-level-fixed' ? 'Fixo · ' : ''}{roll.resolvedFormula || roll.formula}</span>
                   <strong style={{ fontFamily: 'var(--font-heading)', textAlign: 'right', color: 'var(--ink-dark)' }}>+{roll.total}</strong>
                 </div>
               ))}
@@ -617,7 +618,6 @@ export default function TabDados({ char, update, derived, completePendingLevelUp
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <button className="btn btn-primary" onClick={() => handleRoll()}>Girar</button>
-              <button className="btn btn-secondary" onClick={handleTalosAttribute}>3d4 atributo</button>
             </div>
           </div>
 

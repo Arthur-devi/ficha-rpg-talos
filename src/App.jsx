@@ -38,6 +38,8 @@ export default function App() {
     setShikataLevel,
     chooseSubclass,
     dismissSubclassEvent,
+    finalizeInitialAttributes,
+    resetCharacter,
     spendAttributePoint,
     refundAttributePoint,
     setCansaco,
@@ -97,6 +99,13 @@ export default function App() {
     const result = levelUp();
     if (result.ok) navigateToTab('dados');
     return result;
+  };
+
+  const handleResetCharacter = () => {
+    const confirmed = window.confirm('Limpar toda a ficha? Esta ação apaga o rascunho salvo neste navegador e não pode ser desfeita.');
+    if (!confirmed) return;
+    resetCharacter?.();
+    navigateToTab('identidade');
   };
 
   const showPeriodScene = scene => setPeriodScene({ id: `${Date.now()}-${scene.label}`, ...scene });
@@ -238,6 +247,10 @@ export default function App() {
             <TalosIcon name="save" size={17} />
             <span>Salvar ficha</span>
           </button>
+          <button type="button" className="sheet-action-btn danger" onClick={handleResetCharacter} title="Limpar toda a ficha e apagar o rascunho local">
+            <TalosIcon name="reset" size={17} />
+            <span>Limpar ficha</span>
+          </button>
         </div>
         <div className="sheet-sidebar-version">V11.9.3 · Evolução guiada</div>
       </aside>
@@ -285,8 +298,8 @@ export default function App() {
         )}
 
         <section key={activeTab} className="tab-transition" aria-live="polite">
-          {activeTab === 'identidade' && <TabIdentidade char={char} update={update} onLevelUp={handleLevelUp} learnShikata={learnShikata} setActiveShikata={setActiveShikata} setShikataLevel={setShikataLevel} chooseSubclass={chooseSubclass} derived={derived} useOriginAbility={useOriginAbility} attemptGuardianRevestimento={attemptGuardianRevestimento} rollThunganItem={rollThunganItem} setWerewolfForm={setWerewolfForm} clearMetamorphForm={clearMetamorphForm} applyVampireLifesteal={applyVampireLifesteal} />}
-          {activeTab === 'atributos' && <TabAtributos char={char} update={update} updateAttr={updateAttr} derived={derived} toggleEstado={toggleEstado} consumeConcentration={consumeConcentration} togglePericia={togglePericia} spendAttributePoint={spendAttributePoint} refundAttributePoint={refundAttributePoint} setCansaco={setCansaco} />}
+          {activeTab === 'identidade' && <TabIdentidade char={char} update={update} onLevelUp={handleLevelUp} onNavigateAttributes={() => navigateToTab('atributos')} learnShikata={learnShikata} setActiveShikata={setActiveShikata} setShikataLevel={setShikataLevel} chooseSubclass={chooseSubclass} derived={derived} useOriginAbility={useOriginAbility} attemptGuardianRevestimento={attemptGuardianRevestimento} rollThunganItem={rollThunganItem} setWerewolfForm={setWerewolfForm} clearMetamorphForm={clearMetamorphForm} applyVampireLifesteal={applyVampireLifesteal} />}
+          {activeTab === 'atributos' && <TabAtributos char={char} update={update} updateAttr={updateAttr} derived={derived} toggleEstado={toggleEstado} consumeConcentration={consumeConcentration} togglePericia={togglePericia} spendAttributePoint={spendAttributePoint} refundAttributePoint={refundAttributePoint} setCansaco={setCansaco} finalizeInitialAttributes={finalizeInitialAttributes} />}
           {activeTab === 'dados' && <TabDados char={char} update={update} derived={derived} completePendingLevelUpHpRoll={completePendingLevelUpHpRoll} spendTurnAction={spendTurnAction} rollDeathSave={rollDeathSave} reviveCharacter={reviveCharacter} />}
           {activeTab === 'habilidades' && <TabHabilidades char={char} update={update} derived={derived} chooseSubclass={chooseSubclass} useOfficialAbility={useOfficialAbility} resetOfficialAbilityUse={resetOfficialAbilityUse} />}
           {activeTab === 'inventario' && <TabInventario char={char} derived={derived} addInventoryItem={addInventoryItem} addCustomInventoryItem={addCustomInventoryItem} updateCustomInventoryItem={updateCustomInventoryItem} removeInventoryItem={removeInventoryItem} equipItem={equipItem} />}
