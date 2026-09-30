@@ -2,7 +2,7 @@
 
 Ficha React/Vite consolidada contra `TALOS_SISTEMA_v6_COMPLETO.docx`.
 
-Estado atual: **V11.9.2 — Carteira com conversão bidirecional**, sobre a base funcional consolidada do Lote 10.
+Estado atual: **V11.9.3 — Evolução guiada e ajustes mobile**, sobre a base funcional consolidada do Lote 10.
 
 ## Rodar localmente
 
@@ -66,5 +66,6 @@ O V11 altera apenas a camada de apresentação. O motor de regras dos Lotes 1–
 - V11.9: efeito de pergaminho removido por preferência visual; navegação passa a ser imediata, Habilidades mantém as otimizações de pintura e o projeto recebe o passe final de responsividade, overflow, foco e ergonomia mobile.
 - V11.9.1: removidos os respiros marrons acima/abaixo da folha e o overflow horizontal global; carteira recebe a primeira versão da conversão de saldo.
 - V11.9.2: conversão automática global substituída por setas pequenas em cada denominação, permitindo conversão manual nos dois sentidos (`100 PC ⇄ 1 PP ⇄ 100 PP ⇄ 1 PO ⇄ 100 PO ⇄ 1 PD`) sem alterar outras regras.
+- V11.9.3: evolução normal passa a exigir rolagem de vida antes da liberação dos pontos de atributo e distribuição desses pontos antes do próximo nível; ajuste manual de nível recebe confirmação explícita, o InfoTip mobile fica preso à viewport e o ícone redundante da seleção de Origem é removido.
 
 A interface não depende mais de arquivos de fonte embarcados; usa uma pilha serifada clássica do sistema operacional.

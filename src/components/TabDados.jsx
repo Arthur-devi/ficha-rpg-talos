@@ -131,7 +131,7 @@ function DeathTrack({ label, value, kind }) {
   );
 }
 
-export default function TabDados({ char, update, derived, spendTurnAction, rollDeathSave, reviveCharacter }) {
+export default function TabDados({ char, update, derived, completePendingLevelUpHpRoll, spendTurnAction, rollDeathSave, reviveCharacter }) {
   const [formula, setFormula] = useState('1d20');
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
@@ -142,10 +142,20 @@ export default function TabDados({ char, update, derived, spendTurnAction, rollD
   const [skillAdjustment, setSkillAdjustment] = useState(0);
 
   const shikataData = SHIKATAS.find(shikata => shikata.id === char.shikata);
+  const pendingLevelUp = char.pendingLevelUp && typeof char.pendingLevelUp === 'object' ? char.pendingLevelUp : null;
+  const pendingShikataData = pendingLevelUp ? SHIKATAS.find(shikata => shikata.id === pendingLevelUp.shikataId) : null;
+  const hpShikataData = pendingShikataData || shikataData;
   const activeHpRolls = derived.activeHpLevelRolls || [];
   const maxHpRolls = Math.max(0, (Number(derived.activeShikataLevel) || 1) - 1);
-  const remainingHpRolls = Math.max(0, maxHpRolls - activeHpRolls.length);
-  const hitDiceFormula = useMemo(() => resolveHitDiceFormula(shikataData, derived), [shikataData, derived]);
+  const pendingHpRollExists = Boolean(pendingLevelUp && (char.hpLevelRolls || []).some(roll => (
+    roll.shikataId === pendingLevelUp.shikataId
+    && Number(roll.level) === Number(pendingLevelUp.toLevel)
+    && roll.levelUpId === pendingLevelUp.id
+  )));
+  const remainingHpRolls = pendingLevelUp
+    ? (pendingHpRollExists ? 0 : 1)
+    : Math.max(0, maxHpRolls - activeHpRolls.length);
+  const hitDiceFormula = useMemo(() => resolveHitDiceFormula(hpShikataData, derived), [hpShikataData, derived]);
   const diceHistory = Array.isArray(char.diceHistory) ? char.diceHistory : [];
   const attackModifierOptions = derived.attackModifierOptions || [];
   const selectedAttackModifier = attackModifierOptions.find(option => option.key === attackModifierKey) || attackModifierOptions[0] || null;
@@ -316,15 +326,15 @@ export default function TabDados({ char, update, derived, spendTurnAction, rollD
 
     const rolled = rollFormula(hitDiceFormula.resolvedFormula);
     return makeEntry({
-      label: `Vida nível ${level} - ${shikataData.name}`,
+      label: `Vida nível ${level} - ${hpShikataData.name}`,
       formula: hitDiceFormula.rawFormula,
       resolvedFormula: hitDiceFormula.resolvedFormula,
       total: rolled.total,
       parts: rolled.parts,
     }, {
       type: 'hp-level-roll',
-      shikataId: shikataData.id,
-      shikataName: shikataData.name,
+      shikataId: hpShikataData.id,
+      shikataName: hpShikataData.name,
       level,
       characterLevel: Number(char.nivel) || 1,
     });
@@ -341,8 +351,17 @@ export default function TabDados({ char, update, derived, spendTurnAction, rollD
 
   const rollNextHp = () => {
     try {
-      if (!shikataData) throw new Error('Selecione uma shikata antes de girar vida.');
+      if (!hpShikataData) throw new Error('Selecione uma shikata antes de girar vida.');
       if (remainingHpRolls <= 0) throw new Error('Todas as rolagens de vida disponíveis para o nível atual já foram feitas.');
+
+      if (pendingLevelUp) {
+        const entry = buildHpRollEntry(Number(pendingLevelUp.toLevel));
+        const outcome = completePendingLevelUpHpRoll?.(entry);
+        if (!outcome?.ok) throw new Error(outcome?.message || 'Não foi possível finalizar a evolução.');
+        setResult(outcome.roll || entry);
+        setError('');
+        return;
+      }
 
       const nextLevel = activeHpRolls.length + 2;
       commitHpRolls([buildHpRollEntry(nextLevel)]);
@@ -353,7 +372,8 @@ export default function TabDados({ char, update, derived, spendTurnAction, rollD
 
   const rollAllHp = () => {
     try {
-      if (!shikataData) throw new Error('Selecione uma shikata antes de girar vida.');
+      if (pendingLevelUp) throw new Error('Finalize primeiro a evolução pendente com a rolagem de vida obrigatória.');
+      if (!hpShikataData) throw new Error('Selecione uma shikata antes de girar vida.');
       if (remainingHpRolls <= 0) throw new Error('Todas as rolagens de vida disponíveis para o nível atual já foram feitas.');
 
       const entries = Array.from({ length: remainingHpRolls }, (_, index) => buildHpRollEntry(activeHpRolls.length + index + 2));
@@ -365,8 +385,13 @@ export default function TabDados({ char, update, derived, spendTurnAction, rollD
 
   const removeLastHpRoll = () => {
     const activeIds = new Set(activeHpRolls.map(roll => roll.id));
-    const lastActiveId = activeHpRolls[activeHpRolls.length - 1]?.id;
+    const lastActiveRoll = activeHpRolls[activeHpRolls.length - 1];
+    const lastActiveId = lastActiveRoll?.id;
     if (!lastActiveId) return;
+    if (lastActiveRoll?.progressionRequired) {
+      setError('A rolagem de vida usada para concluir uma evolução não pode ser removida.');
+      return;
+    }
 
     update('hpLevelRolls', (char.hpLevelRolls || []).filter(roll => roll.id !== lastActiveId || !activeIds.has(roll.id)));
   };
@@ -414,21 +439,29 @@ export default function TabDados({ char, update, derived, spendTurnAction, rollD
       <div className="card">
         <div className="card-header"><span>D20</span><h3>Vida por Nível</h3></div>
         <div className="card-body">
-          {remainingHpRolls > 0 && (
+          {pendingLevelUp && remainingHpRolls > 0 && (
             <div style={{ marginBottom: 14, padding: '10px 12px', border: '1px solid #d97706', borderRadius: 'var(--radius-md)', background: '#fff7ed', color: '#92400e', fontSize: '0.82rem', lineHeight: 1.45 }}>
-              <strong>Evolução pendente:</strong> há {remainingHpRolls} rolagem(ns) de vida disponível(is). Ao subir de nível, o TALOS manda rolar o dado de vida pós-nível 1 da Shikata que evoluiu.
-              {(char.pontosDistributivos || 0) > 0 && (
-                <div style={{ marginTop: 4 }}>
-                  Pontos distributivos disponíveis: <strong>{char.pontosDistributivos}</strong>. Depois da rolagem, distribua-os na aba Atributos.
-                </div>
-              )}
+              <strong>Evolução pendente:</strong> role agora a vida do nível <strong>{pendingLevelUp.toLevel}</strong> de <strong>{hpShikataData?.name || 'Shikata'}</strong>.
+              <div style={{ marginTop: 4 }}>
+                Os <strong>{pendingLevelUp.pontosConcedidos || 2} pontos de atributo</strong> só serão liberados depois desta rolagem.
+              </div>
+            </div>
+          )}
+          {!pendingLevelUp && remainingHpRolls > 0 && (
+            <div style={{ marginBottom: 14, padding: '10px 12px', border: '1px solid #d97706', borderRadius: 'var(--radius-md)', background: '#fff7ed', color: '#92400e', fontSize: '0.82rem', lineHeight: 1.45 }}>
+              <strong>Rolagem de vida disponível:</strong> há {remainingHpRolls} rolagem(ns) ainda não registrada(s) para o nível atual.
+            </div>
+          )}
+          {!pendingLevelUp && (Number(char.pontosDistributivos) || 0) > 0 && (
+            <div style={{ marginBottom: 14, padding: '10px 12px', border: '1px solid #64815a', borderRadius: 'var(--radius-md)', background: 'rgba(92,126,78,.08)', color: '#3f613b', fontSize: '0.82rem', lineHeight: 1.45 }}>
+              <strong>Vida registrada.</strong> Você tem <strong>{char.pontosDistributivos} ponto(s) de atributo</strong> para distribuir na aba Atributos. Uma nova evolução fica bloqueada até zerar esses pontos.
             </div>
           )}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 14 }}>
             <div style={{ border: '1px solid var(--parch-300)', borderRadius: 'var(--radius-md)', padding: 12, background: 'rgba(253,246,227,0.45)' }}>
               <div style={{ fontFamily: 'var(--font-heading)', fontSize: '0.68rem', color: 'var(--ink-light)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Shikata</div>
-              <div style={{ marginTop: 4, fontFamily: 'var(--font-heading)', color: 'var(--ink-dark)' }}>{shikataData?.name || 'Nenhuma'}</div>
-              <div style={{ marginTop: 4, fontSize: '0.78rem', color: 'var(--ink-faded)' }}>{shikataData?.dadoVida || 'Selecione em Identidade'}</div>
+              <div style={{ marginTop: 4, fontFamily: 'var(--font-heading)', color: 'var(--ink-dark)' }}>{hpShikataData?.name || 'Nenhuma'}</div>
+              <div style={{ marginTop: 4, fontSize: '0.78rem', color: 'var(--ink-faded)' }}>{hpShikataData?.dadoVida || 'Selecione em Identidade'}</div>
             </div>
             <div style={{ border: '1px solid var(--parch-300)', borderRadius: 'var(--radius-md)', padding: 12, background: 'rgba(253,246,227,0.45)' }}>
               <div style={{ fontFamily: 'var(--font-heading)', fontSize: '0.68rem', color: 'var(--ink-light)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Rolagens</div>
@@ -445,11 +478,11 @@ export default function TabDados({ char, update, derived, spendTurnAction, rollD
           </div>
 
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button className="btn btn-primary" onClick={rollNextHp} disabled={!shikataData || remainingHpRolls <= 0 || !hitDiceFormula}>
-              {remainingHpRolls > 0 ? `Girar vida do nível ${activeHpRolls.length + 2}` : 'Vida em dia'}
+            <button className="btn btn-primary" onClick={rollNextHp} disabled={!hpShikataData || remainingHpRolls <= 0 || !hitDiceFormula}>
+              {remainingHpRolls > 0 ? `Girar vida do nível ${pendingLevelUp?.toLevel || activeHpRolls.length + 2}` : 'Vida em dia'}
             </button>
-            <button className="btn btn-secondary" onClick={rollAllHp} disabled={!shikataData || remainingHpRolls <= 0 || !hitDiceFormula}>Girar restantes</button>
-            <button className="btn btn-secondary" onClick={removeLastHpRoll} disabled={activeHpRolls.length === 0}>Remover última vida</button>
+            <button className="btn btn-secondary" onClick={rollAllHp} disabled={Boolean(pendingLevelUp) || !hpShikataData || remainingHpRolls <= 0 || !hitDiceFormula}>Girar restantes</button>
+            <button className="btn btn-secondary" onClick={removeLastHpRoll} disabled={activeHpRolls.length === 0 || Boolean(activeHpRolls[activeHpRolls.length - 1]?.progressionRequired)}>Remover última vida</button>
           </div>
 
           {activeHpRolls.length > 0 && (

@@ -34,6 +34,8 @@ function compactAbilityName(text = '') {
 
 export default function TabIdentidade({ char, update, onLevelUp, learnShikata, setActiveShikata, setShikataLevel, chooseSubclass, derived, useOriginAbility, attemptGuardianRevestimento, rollThunganItem, setWerewolfForm, clearMetamorphForm, applyVampireLifesteal }) {
   const [levelUpMessage, setLevelUpMessage] = useState('');
+  const [manualLevelDialogOpen, setManualLevelDialogOpen] = useState(false);
+  const [manualLevelValue, setManualLevelValue] = useState(1);
   const [multiclassCandidate, setMulticlassCandidate] = useState('');
   const [multiclassConfirmed, setMulticlassConfirmed] = useState(false);
   const [multiclassMessage, setMulticlassMessage] = useState('');
@@ -52,6 +54,9 @@ export default function TabIdentidade({ char, update, onLevelUp, learnShikata, s
   const hpCurrent = Math.max(0, Number(char.hpAtual) || 0);
   const fatigueLimit = Math.max(0, Number(derived.limiteCansacoTotal) || 0);
   const fatigueCurrent = Math.max(0, Number(derived.cansacoAtual) || 0);
+  const pendingLevelUp = char.pendingLevelUp && typeof char.pendingLevelUp === 'object' ? char.pendingLevelUp : null;
+  const pendingAttributePoints = Math.max(0, Number(char.pontosDistributivos) || 0);
+  const levelProgressionBlocked = Boolean(pendingLevelUp) || pendingAttributePoints > 0;
 
   const handleOrigemChange = (value) => {
     update('origem', value);
@@ -89,8 +94,21 @@ export default function TabIdentidade({ char, update, onLevelUp, learnShikata, s
     const result = onLevelUp?.();
     if (!result) return;
     setLevelUpMessage(result.ok
-      ? `${shikataData?.name || 'Shikata'} Nv. ${result.nextLevel}: +${result.pontosConcedidos} pontos distributivos${result.nextLevel > 1 ? '. Role a vida na página Dados.' : '.'}`
+      ? `${shikataData?.name || 'Shikata'} Nv. ${result.nextLevel}: evolução iniciada. Role o dado de vida na página Dados para liberar ${result.pontosConcedidos} pontos de atributo.`
       : result.message);
+  };
+
+  const openManualLevelDialog = () => {
+    if (!char.shikata || pendingLevelUp) return;
+    setManualLevelValue(activeShikataLevel);
+    setManualLevelDialogOpen(true);
+  };
+
+  const confirmManualLevel = () => {
+    if (!char.shikata) return;
+    const result = setShikataLevel?.(char.shikata, manualLevelValue);
+    if (result?.ok === false) setLevelUpMessage(result.message);
+    setManualLevelDialogOpen(false);
   };
 
   return (
@@ -191,7 +209,6 @@ export default function TabIdentidade({ char, update, onLevelUp, learnShikata, s
             </select>
             <div className="character-foundation-detail">
               <span>{origemData ? compactAbilityName(origemData.habilidade) : 'Bônus, limitações e herança'}</span>
-              {origemData && <InfoTip align="end" title={origemData.name} label={`Detalhes da origem ${origemData.name}`}>{origemData.habilidade}</InfoTip>}
             </div>
           </div>
 
@@ -202,6 +219,7 @@ export default function TabIdentidade({ char, update, onLevelUp, learnShikata, s
             </div>
             <select
               value={char.shikata}
+              disabled={Boolean(pendingLevelUp)}
               onChange={e => {
                 const id = e.target.value;
                 if (!id) return;
@@ -233,14 +251,28 @@ export default function TabIdentidade({ char, update, onLevelUp, learnShikata, s
               <option value="">{shikataData && activeShikataLevel >= (shikataData?.subclasseNivel || 99) ? 'Escolha subclasse...' : shikataData ? `Disponível no nível ${shikataData.subclasseNivel}` : 'Selecione Shikata'}</option>
               {shikataData?.subclasses.map(sc => <option key={sc} value={sc}>{sc}</option>)}
             </select>
-            <button className="character-level-up" type="button" disabled={!char.shikata} onClick={handleLevelUp}>
+            <button className="character-level-up" type="button" disabled={!char.shikata || levelProgressionBlocked} onClick={handleLevelUp}>
               <TalosIcon name="upgrade" size={15} />
-              Evoluir {shikataData?.name || 'Shikata'}
+              {pendingLevelUp
+                ? 'Role a vida para continuar'
+                : pendingAttributePoints > 0
+                  ? `Distribua ${pendingAttributePoints} ponto(s)`
+                  : `Evoluir ${shikataData?.name || 'Shikata'}`}
             </button>
           </div>
         </div>
 
-        {levelUpMessage && <div className={`character-level-message ${levelUpMessage.includes('Selecione') ? 'error' : ''}`}>{levelUpMessage}</div>}
+        {levelUpMessage && !pendingLevelUp && <div className={`character-level-message ${levelUpMessage.includes('Selecione') || levelUpMessage.includes('Finalize') ? 'error' : ''}`}>{levelUpMessage}</div>}
+        {pendingLevelUp && (
+          <div className="character-level-message error">
+            Evolução em andamento: role o dado de vida do nível {pendingLevelUp.toLevel} na página Dados. Os pontos de atributo ainda estão bloqueados.
+          </div>
+        )}
+        {!pendingLevelUp && pendingAttributePoints > 0 && (
+          <div className="character-level-message">
+            Distribua os {pendingAttributePoints} ponto(s) de atributo restante(s) antes de evoluir novamente.
+          </div>
+        )}
       </section>
 
       {profissaoData && (
@@ -367,7 +399,7 @@ export default function TabIdentidade({ char, update, onLevelUp, learnShikata, s
           {learnedShikatas.length > 0 && (
             <div className="multiclass-learned-strip">
               {learnedShikatas.map(item => (
-                <button key={item.id} type="button" className={`multiclass-learned-chip ${char.shikata === item.id ? 'active' : ''}`} onClick={() => setActiveShikata?.(item.id)}>
+                <button key={item.id} type="button" disabled={Boolean(pendingLevelUp) && char.shikata !== item.id} className={`multiclass-learned-chip ${char.shikata === item.id ? 'active' : ''}`} onClick={() => setActiveShikata?.(item.id)}>
                   <strong>{item.name}</strong><span>Nv. {item.nivel}</span>{item.subclasse && <small>{item.subclasse}</small>}
                 </button>
               ))}
@@ -380,7 +412,10 @@ export default function TabIdentidade({ char, update, onLevelUp, learnShikata, s
                 <label>Nível da Shikata ativa</label>
                 <InfoTip align="start" title="Ajuste de nível" label="Regra do nível da Shikata">Ajuste manual não concede pontos distributivos e não cria rolagem de HP. Use Evoluir Shikata para a progressão normal.</InfoTip>
               </div>
-              <input type="number" min="1" max="30" value={char.shikata ? activeShikataLevel : 1} disabled={!char.shikata} onChange={e => char.shikata && setShikataLevel?.(char.shikata, Number(e.target.value))} />
+              <div className="manual-level-edit-control">
+                <input type="number" min="1" max="30" value={char.shikata ? activeShikataLevel : 1} disabled={!char.shikata || Boolean(pendingLevelUp)} readOnly aria-label="Nível atual da Shikata ativa" onClick={openManualLevelDialog} />
+                <button type="button" className="btn btn-secondary btn-sm" disabled={!char.shikata || Boolean(pendingLevelUp)} onClick={openManualLevelDialog}>Editar manualmente</button>
+              </div>
             </div>
             {shikataData && (
               <div className="character-shikata-summary">
@@ -425,7 +460,7 @@ export default function TabIdentidade({ char, update, onLevelUp, learnShikata, s
                   <button
                     type="button"
                     className="btn btn-primary"
-                    disabled={!multiclassCandidate || !multiclassConfirmed}
+                    disabled={Boolean(pendingLevelUp) || !multiclassCandidate || !multiclassConfirmed}
                     onClick={() => {
                       const result = learnShikata?.(multiclassCandidate);
                       if (!result) return;
@@ -456,6 +491,41 @@ export default function TabIdentidade({ char, update, onLevelUp, learnShikata, s
           <div className="field character-story-wide"><label>Vícios</label><textarea value={char.vicios} onChange={e => update('vicios', e.target.value)} placeholder="O que te atrai inconscientemente..." rows={2} /></div>
         </div>
       </section>
+
+      {manualLevelDialogOpen && (
+        <div className="modal-overlay" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) setManualLevelDialogOpen(false); }}>
+          <div className="modal manual-level-modal" role="dialog" aria-modal="true" aria-labelledby="manual-level-title">
+            <div className="modal-header">
+              <div>
+                <small>AJUSTE MANUAL</small>
+                <h3 id="manual-level-title">Editar nível de {shikataData?.name || 'Shikata'}</h3>
+              </div>
+              <button type="button" className="btn btn-secondary btn-sm" onClick={() => setManualLevelDialogOpen(false)}>Fechar</button>
+            </div>
+            <div className="modal-body">
+              <div className="manual-level-warning">
+                <strong>Importante</strong>
+                <p>Alterar o nível manualmente não concede nem garante dados de vida adicionais e também não concede pontos de atributo. Para a progressão normal do personagem, use o botão Evoluir {shikataData?.name || 'Shikata'}.</p>
+              </div>
+              <div className="field">
+                <label htmlFor="manual-shikata-level">Novo nível da Shikata</label>
+                <input
+                  id="manual-shikata-level"
+                  type="number"
+                  min="1"
+                  max="30"
+                  value={manualLevelValue}
+                  onChange={event => setManualLevelValue(Math.max(1, Math.min(30, Number(event.target.value) || 1)))}
+                />
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-secondary" onClick={() => setManualLevelDialogOpen(false)}>Cancelar</button>
+              <button type="button" className="btn btn-primary" onClick={confirmManualLevel}>Entendi, alterar nível</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -6577,3 +6577,83 @@ body,
 @media (max-width: 420px) {
   .currency-grid { gap: 10px 8px; }
 }
+
+/* ============================================================
+   V11.9.3 - Fluxo de evolução + InfoTip mobile
+   ============================================================ */
+.manual-level-edit-control {
+  display: grid;
+  grid-template-columns: minmax(72px, 92px) minmax(0, 1fr);
+  gap: 8px;
+  align-items: stretch;
+}
+.manual-level-edit-control input[readonly]:not(:disabled) { cursor: pointer; }
+.manual-level-edit-control .btn { min-width: 0; white-space: normal; }
+.manual-level-modal { max-width: 520px; }
+.manual-level-modal .modal-header > div { min-width: 0; }
+.manual-level-modal .modal-header small {
+  display: block;
+  margin-bottom: 3px;
+  color: #80613f;
+  font-family: var(--font-heading);
+  font-size: .58rem;
+  letter-spacing: .11em;
+}
+.manual-level-modal .modal-header h3 {
+  margin: 0;
+  color: #4f331b;
+  font-family: var(--font-title);
+  font-size: 1.08rem;
+}
+.manual-level-warning {
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border: 1px solid rgba(157, 76, 64, .42);
+  border-left: 4px solid #9d4c40;
+  background: rgba(145, 67, 55, .07);
+  color: #6f352e;
+  line-height: 1.5;
+}
+.manual-level-warning strong {
+  display: block;
+  margin-bottom: 4px;
+  font-family: var(--font-heading);
+  font-size: .72rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.manual-level-warning p { margin: 0; }
+.multiclass-learned-chip:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+
+@media (max-width: 760px) {
+  /* Em telas estreitas, o balão vira uma nota fixa dentro da viewport.
+     Isso evita que alinhamentos start/end escapem pelas laterais. */
+  .info-tip .info-tip-popover,
+  .info-tip-start .info-tip-popover,
+  .info-tip-end .info-tip-popover {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    top: auto;
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    width: auto;
+    max-width: none;
+    max-height: min(60dvh, 420px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    transform: translateY(8px) scale(.99);
+  }
+  .info-tip:hover .info-tip-popover,
+  .info-tip:focus-within .info-tip-popover,
+  .info-tip-start:hover .info-tip-popover,
+  .info-tip-start:focus-within .info-tip-popover,
+  .info-tip-end:hover .info-tip-popover,
+  .info-tip-end:focus-within .info-tip-popover {
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (max-width: 480px) {
+  .manual-level-edit-control { grid-template-columns: 1fr; }
+  .manual-level-modal .modal-footer > .btn { flex: 1 1 150px; }
+}

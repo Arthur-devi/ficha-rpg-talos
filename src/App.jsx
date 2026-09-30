@@ -32,6 +32,7 @@ export default function App() {
     update,
     updateAttr,
     levelUp,
+    completePendingLevelUpHpRoll,
     learnShikata,
     setActiveShikata,
     setShikataLevel,
@@ -238,7 +239,7 @@ export default function App() {
             <span>Salvar ficha</span>
           </button>
         </div>
-        <div className="sheet-sidebar-version">V11.9.2 · Carteira bidirecional</div>
+        <div className="sheet-sidebar-version">V11.9.3 · Evolução guiada</div>
       </aside>
 
       <div className="sheet-content-column">
@@ -286,7 +287,7 @@ export default function App() {
         <section key={activeTab} className="tab-transition" aria-live="polite">
           {activeTab === 'identidade' && <TabIdentidade char={char} update={update} onLevelUp={handleLevelUp} learnShikata={learnShikata} setActiveShikata={setActiveShikata} setShikataLevel={setShikataLevel} chooseSubclass={chooseSubclass} derived={derived} useOriginAbility={useOriginAbility} attemptGuardianRevestimento={attemptGuardianRevestimento} rollThunganItem={rollThunganItem} setWerewolfForm={setWerewolfForm} clearMetamorphForm={clearMetamorphForm} applyVampireLifesteal={applyVampireLifesteal} />}
           {activeTab === 'atributos' && <TabAtributos char={char} update={update} updateAttr={updateAttr} derived={derived} toggleEstado={toggleEstado} consumeConcentration={consumeConcentration} togglePericia={togglePericia} spendAttributePoint={spendAttributePoint} refundAttributePoint={refundAttributePoint} setCansaco={setCansaco} />}
-          {activeTab === 'dados' && <TabDados char={char} update={update} derived={derived} spendTurnAction={spendTurnAction} rollDeathSave={rollDeathSave} reviveCharacter={reviveCharacter} />}
+          {activeTab === 'dados' && <TabDados char={char} update={update} derived={derived} completePendingLevelUpHpRoll={completePendingLevelUpHpRoll} spendTurnAction={spendTurnAction} rollDeathSave={rollDeathSave} reviveCharacter={reviveCharacter} />}
           {activeTab === 'habilidades' && <TabHabilidades char={char} update={update} derived={derived} chooseSubclass={chooseSubclass} useOfficialAbility={useOfficialAbility} resetOfficialAbilityUse={resetOfficialAbilityUse} />}
           {activeTab === 'inventario' && <TabInventario char={char} derived={derived} addInventoryItem={addInventoryItem} addCustomInventoryItem={addCustomInventoryItem} updateCustomInventoryItem={updateCustomInventoryItem} removeInventoryItem={removeInventoryItem} equipItem={equipItem} />}
           {activeTab === 'magias' && <TabMagias char={char} update={update} derived={derived} registerAbilityUse={registerAbilityUse} spendTurnAction={spendTurnAction} performRest={performRest} />}

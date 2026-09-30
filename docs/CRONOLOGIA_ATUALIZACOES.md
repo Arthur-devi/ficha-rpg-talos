@@ -1255,3 +1255,15 @@ Eliminar a manutenção paralela/manual das 21 Shikatas e fazer a ficha consumir
 - Botões inválidos ficam visualmente desabilitados e cada ação informa a conversão executada.
 - Versão visual do aplicativo atualizada para V11.9.2.
 - Nenhuma regra, persistência, cálculo ou runtime TALOS foi alterado.
+
+## V11.9.3 — Evolução guiada / InfoTip mobile
+
+- O botão **Evoluir Shikata** agora cria uma evolução pendente e não libera imediatamente os 2 pontos de atributo.
+- A rolagem de vida do novo nível passa a ser obrigatória antes da liberação dos pontos distributivos.
+- Após a rolagem de vida, uma nova evolução permanece bloqueada enquanto houver pontos de atributo não distribuídos.
+- A Shikata ativa, a aprendizagem de nova Shikata e o ajuste manual de nível ficam protegidos enquanto uma evolução normal estiver aguardando a rolagem de vida.
+- Rolagens de vida que concluíram uma evolução normal ficam vinculadas ao evento e não podem ser removidas depois da liberação dos pontos.
+- O ajuste manual do nível da Shikata ativa agora abre um popup informando que essa alteração não concede nem garante dados de vida adicionais e não concede pontos de atributo.
+- O ícone de informação redundante ao lado da seleção de Origem foi removido; as informações completas continuam disponíveis na seção de Herança logo abaixo.
+- Em telas de até 760 px, os InfoTips passam a abrir como nota fixa dentro da viewport, evitando estouro lateral em dispositivos móveis.
+- Versão do aplicativo atualizada para V11.9.3 e versão persistente das regras para 14.

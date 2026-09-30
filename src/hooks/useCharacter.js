@@ -12,7 +12,8 @@ import { getStateRuntime, IMPARAVEL_EXACT_IMMUNITIES } from '../data/stateRuntim
 import { DEATH_SAVE_TABLE_RULE } from '../data/tableRules';
 import { clearDeathSavesOnHealing, DEFAULT_DEATH_SAVE_STATE, normalizeDeathSaveState, resolveDeathSaveRoll, reviveDeathSaveState } from '../data/deathSaveRuntime';
 
-const CURRENT_RULES_VERSION = 13;
+const CURRENT_RULES_VERSION = 14;
+const DICE_HISTORY_LIMIT = 50;
 const DEFAULT_DESLOCAMENTO_BASE = 2;
 const DEFAULT_LIMITE_CANSACO_BASE = 4;
 
@@ -78,6 +79,7 @@ const defaultCharacter = {
     sorte: 0,
   },
   levelUpHistory: [],
+  pendingLevelUp: null,
 
   // CA
   caBase: 8,
@@ -231,6 +233,21 @@ export function useCharacter() {
     const current = charRef.current;
     if (!current.shikata) return { ok: false, message: 'Selecione uma Shikata antes de subir de nível.' };
 
+    if (current.pendingLevelUp) {
+      return {
+        ok: false,
+        message: 'Finalize a evolução atual: role primeiro o dado de vida na página Dados.',
+      };
+    }
+
+    const availableAttributePoints = Math.max(0, Number(current.pontosDistributivos) || 0);
+    if (availableAttributePoints > 0) {
+      return {
+        ok: false,
+        message: `Distribua os ${availableAttributePoints} ponto(s) de atributo pendente(s) antes de evoluir novamente.`,
+      };
+    }
+
     const currentLevel = getShikataLevel(current, current.shikata);
     if (currentLevel >= 30) return { ok: false, message: 'O nível máximo configurado por Shikata é 30.' };
 
@@ -255,13 +272,21 @@ export function useCharacter() {
       toLevel: nextLevel,
       shikataId: current.shikata,
       pontosConcedidos: 2,
+      status: 'awaiting-hp',
     };
 
     const next = syncLegacyShikataFields({
       ...current,
       shikataProgress: progress,
-      pontosDistributivos: (Number(current.pontosDistributivos) || 0) + 2,
       levelUpHistory: [...(current.levelUpHistory || []), entry],
+      pendingLevelUp: {
+        id: entry.id,
+        createdAt: now,
+        shikataId: current.shikata,
+        fromLevel: currentLevel,
+        toLevel: nextLevel,
+        pontosConcedidos: 2,
+      },
       pendingSubclassChoice: shouldOpenSubclassEvent
         ? { shikataId: current.shikata, level: subclassUnlock.level, createdAt: now }
         : current.pendingSubclassChoice,
@@ -274,12 +299,55 @@ export function useCharacter() {
       characterLevel: next.nivel,
       shikataId: current.shikata,
       pontosConcedidos: 2,
+      requiresHpRoll: true,
       subclassEvent: shouldOpenSubclassEvent ? next.pendingSubclassChoice : null,
+    };
+  }, [commitCharacter]);
+
+  const completePendingLevelUpHpRoll = useCallback((rollEntry) => {
+    const current = charRef.current;
+    const pending = current.pendingLevelUp;
+    if (!pending) return { ok: false, message: 'Não há evolução aguardando rolagem de vida.' };
+    if (!rollEntry || rollEntry.shikataId !== pending.shikataId || Number(rollEntry.level) !== Number(pending.toLevel)) {
+      return { ok: false, message: 'Esta rolagem não corresponde à evolução pendente.' };
+    }
+
+    const lockedRoll = {
+      ...rollEntry,
+      progressionRequired: true,
+      levelUpId: pending.id,
+    };
+    const hpLevelRolls = Array.isArray(current.hpLevelRolls) ? current.hpLevelRolls : [];
+    const existingRoll = hpLevelRolls.find(roll => roll.levelUpId === pending.id);
+    const registeredRoll = existingRoll || lockedRoll;
+    const nextRolls = existingRoll ? hpLevelRolls : [...hpLevelRolls, registeredRoll];
+    const nextHistory = existingRoll
+      ? (current.diceHistory || [])
+      : [registeredRoll, ...(current.diceHistory || [])].slice(0, DICE_HISTORY_LIMIT);
+    const pointsGranted = Math.max(0, Number(pending.pontosConcedidos) || 2);
+
+    const next = {
+      ...current,
+      hpLevelRolls: nextRolls,
+      diceHistory: nextHistory,
+      pontosDistributivos: (Number(current.pontosDistributivos) || 0) + pointsGranted,
+      pendingLevelUp: null,
+      levelUpHistory: (current.levelUpHistory || []).map(historyEntry => historyEntry.id === pending.id
+        ? { ...historyEntry, status: 'completed', hpRollId: registeredRoll.id, completedAt: new Date().toISOString() }
+        : historyEntry),
+    };
+    commitCharacter(next);
+
+    return {
+      ok: true,
+      pontosConcedidos: pointsGranted,
+      roll: registeredRoll,
     };
   }, [commitCharacter]);
 
   const learnShikata = useCallback((shikataId) => {
     const current = charRef.current;
+    if (current.pendingLevelUp) return { ok: false, message: 'Finalize a evolução pendente antes de aprender outra Shikata.' };
     const data = SHIKATAS.find(shikata => shikata.id === shikataId);
     if (!data) return { ok: false, message: 'Shikata inválida.' };
     const progress = normalizeShikataProgress(current.shikataProgress, current);
@@ -304,6 +372,9 @@ export function useCharacter() {
 
   const setActiveShikata = useCallback((shikataId) => {
     const current = charRef.current;
+    if (current.pendingLevelUp && current.pendingLevelUp.shikataId !== shikataId) {
+      return { ok: false, message: 'Role o dado de vida da evolução pendente antes de trocar a Shikata ativa.' };
+    }
     const entry = getShikataEntry(current, shikataId);
     if (!entry) return { ok: false, message: 'Aprenda esta Shikata antes de ativá-la.' };
     const next = syncLegacyShikataFields({ ...current, shikata: shikataId, subclasse: entry.subclasse || '' });
@@ -313,6 +384,9 @@ export function useCharacter() {
 
   const setShikataLevel = useCallback((shikataId, value) => {
     const current = charRef.current;
+    if (current.pendingLevelUp) {
+      return { ok: false, message: 'Finalize a evolução pendente antes de fazer um ajuste manual de nível.' };
+    }
     const progress = normalizeShikataProgress(current.shikataProgress, current);
     const entry = progress.entries[shikataId];
     if (!entry) return { ok: false, message: 'Shikata não aprendida.' };
@@ -1434,6 +1508,7 @@ export function useCharacter() {
     update,
     updateAttr,
     levelUp,
+    completePendingLevelUpHpRoll,
     learnShikata,
     setActiveShikata,
     setShikataLevel,
@@ -1682,6 +1757,9 @@ function normalizeCharacter(data = {}) {
     }
     if ((data.talosRulesVersion || 0) < 13) {
       merged.deathSaveState = { ...DEFAULT_DEATH_SAVE_STATE };
+    }
+    if ((data.talosRulesVersion || 0) < 14) {
+      merged.pendingLevelUp = null;
     }
     merged.talosRulesVersion = CURRENT_RULES_VERSION;
   }

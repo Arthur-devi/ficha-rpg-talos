@@ -148,7 +148,7 @@ assert(systemSource.includes("SHIKATAS_V6") && systemSource.includes("SHIKATAS_H
 
 const useCharacterSource = fs.readFileSync(path.join(SRC, 'hooks/useCharacter.js'), 'utf8');
 const rulesVersion = Number(useCharacterSource.match(/CURRENT_RULES_VERSION\s*=\s*(\d+)/)?.[1] || 0);
-assert(rulesVersion === 13, 'Versão persistente das regras = 13', `encontrada ${rulesVersion}`);
+assert(rulesVersion === 14, 'Versão persistente das regras = 14', `encontrada ${rulesVersion}`);
 
 const packageJson = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
 assert(packageJson.scripts?.['audit:talos'] === 'node scripts/audit-talos.mjs', 'Script npm audit:talos disponível');
